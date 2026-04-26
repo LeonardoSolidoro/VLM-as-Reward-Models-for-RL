@@ -18,9 +18,11 @@ Use a manipulation benchmark, probably Meta-World, with tasks like:
 - pick and place
 - button press
 
+Include also longer horizon, multi stage tasks??
+
 `Meta-World`: Meta-World is a simulated robotic manipulation benchmark with 50 distinct Sawyer robot tasks, such as reaching, pushing, pick-and-place, drawer opening, button pressing, door opening, window opening, and peg insertion. 
 
-2. Collect rollouts
+1. Collect rollouts
 
 Run policies with different success rates:
 
@@ -61,13 +63,17 @@ Potential reuse:
 
 Example in proposal: Rocamonde et al. show that pretrained VLMs can serve as zero-shot reward models by scoring the similarity between visual observations and natural language task descriptions. Their results demonstrate that CLIP-based rewards can train RL agents without manually engineered reward functions, but also reveal limitations for subtle visual states and off-distribution renderings. Building on this, our project studies whether pairwise before/after VLM judgments can provide a more progress-sensitive reward signal for robotic manipulation tasks.
 
-`LSceneLLM`: Not very relevant, but LSceneLLM supports the idea that task-relevant visual focus matters. The paper shows that large scene understanding improves when the model adaptively selects relevant regions instead of processing all visual tokens equally. e.g. We can implement full image reward vs cropped region reward. Or maybe help the robot when the movement is really subtle (same idea but 2D). 
+`LSceneLLM`: Not very relevant, but LSceneLLM supports the idea that task-relevant visual focus matters. The paper shows that large scene understanding improves when the model adaptively selects relevant regions instead of processing all visual tokens equally. e.g. We can implement full image reward vs cropped region reward. Or maybe help the robot when the movement is really subtle (same idea but 2D).
 
 4. Convert VLM answers to rewards
 
+- Ask VLM to output a point scoring 0-5
+- Ask VLM to compare 2 frames and score if second frame is closer to objective, so output a yes or no (or use logits of yes/no token as reward?)
+- Add regression head
+
 5. Evaluate the VLM reward
 
-You compare VLM judgments against ground truth task success / environment rewards.
+You compare VLM judgments against ground truth environment rewards.
 
 Important questions:
 
@@ -76,7 +82,7 @@ Important questions:
 - Does it fail on visually subtle tasks?
 - Does it generalize across different manipulation tasks? See in which task does the VLM fail?
 
-`Meta-World`: Meta-World gives you a controlled set of manipulation tasks where ground-truth rewards and success metrics already exist. That makes it very useful for evaluating whether your VLM-generated rewards are actually meaningful. We can compare $r_t^{VLM}$ with $r_t^{env}$, and also compare the final policy success rate. 
+`Meta-World`: Meta-World gives you a controlled set of manipulation tasks where ground-truth rewards and success metrics already exist. That makes it very useful for evaluating whether your VLM-generated rewards are actually meaningful. We can compare $r_t^{VLM}$ with $r_t^{env}$, and also compare the final policy success rate.
 
 Meta-World lets us answer:
 
@@ -86,12 +92,13 @@ Meta-World lets us answer:
 Potential reward methods to compare:
 
 - Original Meta-World reward (upper baseline)
+- Random reward
 - CLIP reward
-- Robo World reward
+- Robo Reward
 - This project's reward
 - Optional crop-based pairwise reward
 
-Question: How do we compare the rewards?
+Question: How do we compare the rewards? (MAE to ground truth rewards, EPIC distance to other rewards)
 
 6. Use it for actual RL training
 
@@ -102,4 +109,5 @@ An RL agent trained with VLM-derived rewards achieves higher success rate than a
 Novelty:
 - A wider variety of tasks + tasks with subtle changes in movement (e.g. very close to button but not touch it)
 - Extend to multi-stage tasks?
-- Fine-tuning possible? Get 3D point cloud from MetaWorld and use LSceneLLM?s
+- Fine-tuning possible?
+- If model fails to detect subtle changes or struggles with spatial understanding we could explore the method proposed by LSceneLLM: Get 3D point cloud from MetaWorld and use LSceneLLM
