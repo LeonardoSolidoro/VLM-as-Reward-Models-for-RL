@@ -6,7 +6,7 @@ The core idea is to use a VLM as a zero-shot reward model. Instead of giving the
 
 RoboReward: Full rollout as input, reward only at the end?
 
-Project pipeline: 
+Project pipeline:
 
 1. Choose benchmark tasks
 
@@ -20,7 +20,7 @@ Use a manipulation benchmark, probably Meta-World, with tasks like:
 
 Include also longer horizon, multi stage tasks??
 
-`Meta-World`: Meta-World is a simulated robotic manipulation benchmark with 50 distinct Sawyer robot tasks, such as reaching, pushing, pick-and-place, drawer opening, button pressing, door opening, window opening, and peg insertion. 
+`Meta-World`: Meta-World is a simulated robotic manipulation benchmark with 50 distinct Sawyer robot tasks, such as reaching, pushing, pick-and-place, drawer opening, button pressing, door opening, window opening, and peg insertion.
 
 1. Collect rollouts
 
@@ -38,7 +38,7 @@ $$​
 
 where each state can be rendered as an image.
 
-`Meta-World`: Meta-World gives you the simulated robot, object states, actions, rewards, and success labels. The benchmark uses a simulated Sawyer robot, with a shared action space across tasks. So your rollouts become: $s_0, s_1, ..., s_T$, where $s_T$ can be rendered as an RGB image and passed to the VLM. 
+`Meta-World`: Meta-World gives you the simulated robot, object states, actions, rewards, and success labels. The benchmark uses a simulated Sawyer robot, with a shared action space across tasks. So your rollouts become: $s_0, s_1, ..., s_T$, where $s_T$ can be rendered as an RGB image and passed to the VLM.
 
 3. Query the VLM
 
@@ -55,7 +55,7 @@ So the reward is high when the current image looks semantically close to the goa
 Their reward is more simple: $r_t = VLM(s_t, goal)$, but the project idea is slightly different and potentially stronger: $r_t = VLMProgress(s_t, s_{t + k}, goal)$. That means the project compares before/after frame pairs, not just a single current frame. This is important because manipulation progress is often relative.
 
 Potential reuse:
-- VLM-RM can become the `baseline method` (reuse the simplest VLM reward baseline $R_{CLIP}(s) = cos(CLIP_{text}(goal), CLIP_{image}(image(s)))$). 
+- VLM-RM can become the `baseline method` (reuse the simplest VLM reward baseline $R_{CLIP}(s) = cos(CLIP_{text}(goal), CLIP_{image}(image(s)))$).
 
 - They improve CLIP reward by adding a baseline prompt, e.g.: Goal: “a humanoid robot kneeling”, baseline: “a humanoid robot”. Then they project the image embedding toward the direction from baseline to goal. Intuitively, this removes irrelevant visual information and focuses the reward on the goal-relevant change.
 
