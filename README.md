@@ -22,6 +22,19 @@ Include also longer horizon, multi stage tasks??
 
 `Meta-World`: Meta-World is a simulated robotic manipulation benchmark with 50 distinct Sawyer robot tasks, such as reaching, pushing, pick-and-place, drawer opening, button pressing, door opening, window opening, and peg insertion.
 
+`ManiSkill3`: a simulation benchmark for robotic object manipulation tasks with a diverse range of environments, robot types (humanoids, mobile manipulators, and single-arm robots) and with realistic physical simulations (Sim2Real is possible).
+
+Can be used to experiment generalization across visual domains
+
+ManiSill3 tasks:
+
+- Lift Cube
+- Turn Faucet
+- Open Cabinet Door
+- Open Cabinet Drawer
+- Push Chair
+- Stack Cube
+
 1. Collect rollouts
 
 Run policies with different success rates:
