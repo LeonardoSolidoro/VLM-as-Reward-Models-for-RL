@@ -1,0 +1,4 @@
+metaworld
+gymnasium
+numpy
+opencv-python
