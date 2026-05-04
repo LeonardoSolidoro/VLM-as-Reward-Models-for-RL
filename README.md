@@ -56,3 +56,10 @@ To collect the trajectory data for the tasks, run:
 python scripts/collect_metaworld_data.py
 ```
 You can modify the `rollouts_per_setting` variable in the script to adjust the number of trajectories collected.
+
+```bash
+vllm serve cyankiwi/Qwen3-VL-4B-Instruct-AWQ-4bit \
+    --gpu-memory-utilization 0.9 \
+    --max-model-len 2048 \
+    --enforce-eager
+```
