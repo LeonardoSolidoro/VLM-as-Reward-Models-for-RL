@@ -25,29 +25,40 @@ POLICY_MAP = {
     'pick-place-v3': SawyerPickPlaceV3Policy
 }
 
-def collect_rollout(env_name, level='expert', max_steps=500, render_size=(256, 256), camera_name='corner'):
+def collect_rollout(
+    env_name,
+    level = 'expert',
+    max_steps = 500,
+    render_size = (256, 256),
+    camera_name = 'corner'
+):
     """Collects a single rollout from Meta-World."""
-    # Use MT1 for single task environments in Meta-World
-    mt1 = metaworld.MT1(env_name)
-    # We instantiate the environment class directly from train_classes
-    env = mt1.train_classes[env_name](render_mode='rgb_array')
+
+    # env_name = task name, e.g. "reach-v3", mt1 contains environment class in mt1.train_classes[env_name] 
+    # and a list of task variants in mt1.train_tasks. Different task variants mean different sampled instances of the same task, 
+    # e.g. different object or robot starting positions
+    mt1 = metaworld.MT1(env_name) 
+
+    # Instantiate the environment class 
+    env = mt1.train_classes[env_name](render_mode = 'rgb_array')
     
-    # Use a random task from MT1 train_tasks to randomize initial conditions (e.g. object positions)
-    # The policy read the goal position from the observation, so it handles any task instance
+    # Pick a random task instance to randomize 
     idx = np.random.randint(len(mt1.train_tasks))
     task = mt1.train_tasks[idx]
+
+    # Load the sampled task configuration into the environment, i.e. tell the environment which task instance to use for this rollout, 
+    # what the inital conditions should be, and what goal/task parameters should be active for this rollout
     env.set_task(task)
     
     obs, info = env.reset()
     
-    # Set camera angle after reset to ensure renderer is initialized
-    # Gymnasium's MujocoRenderer uses camera_id to determine the view
+    # Select the camera view, e.g. "corner", "overhead", "front", ... 
     for i in range(env.model.ncam):
         if env.model.camera(i).name == camera_name:
             env.mujoco_renderer.camera_id = i
             break
     
-    # Initialize policy
+    # Initialize the expert policy for this task
     policy_cls = POLICY_MAP.get(env_name)
     if policy_cls is None:
         raise ValueError(f"No policy found for task {env_name}")
@@ -61,31 +72,33 @@ def collect_rollout(env_name, level='expert', max_steps=500, render_size=(256, 2
     }
     
     for t in range(max_steps):
-        # 1. Render frame (topview is usually the default or camera 0)
-        # metaworld render returns a (H, W, 3) rgb array
-        # In newer Gymnasium-based MetaWorld, we can use render() directly if render_mode='rgb_array'
+        # 1) Render frame from the current simulator state
+        # Meta-World returns (H, W, 3) RGB arrays when render_mode is 'rgb_array'
         img = env.render()
-        # Mujoco rendering is sometimes vertically flipped (upside down)
+
+        # Mujoco rendering can be upside down depending on setup.
         img = np.flipud(img)
-        # Resize if needed
+
+        # Resize to a consistent dataset resolution.
         if img.shape[:2] != render_size:
             img = cv2.resize(img, render_size)
+
         frames.append(img)
         
-        # 2. Get action
+        # 2) Choose an action based on the requested rollout level
         if level == 'expert':
             action = policy.get_action(obs)
         elif level == 'near-expert':
-            # Add Gaussian noise to expert action to make it "near-expert"
-            action = policy.get_action(obs) + np.random.normal(0, 1, size=4)
+            # Add Gaussian noise to expert actions for "near-expert" behavior
+            action = policy.get_action(obs) + np.random.normal(0, 1, size = 4)
             action = np.clip(action, -1, 1)
-        else: # random
+        else:  # random
             action = env.action_space.sample()
             
-        # 3. Step environment
+        # 3) Step the environment forward with the chosen action
         obs, reward, terminated, truncated, info = env.step(action)
         
-        # 4. Record metadata
+        # 4) Record rewards, success flags, and actions for later analysis
         metadata["rewards"].append(float(reward))
         metadata["success"].append(float(info['success']))
         metadata["actions"].append(action.tolist())
@@ -98,25 +111,27 @@ def collect_rollout(env_name, level='expert', max_steps=500, render_size=(256, 2
 
 def save_rollout(frames, metadata, base_path):
     """Saves frames as JPGs and metadata as JSON."""
-    os.makedirs(base_path, exist_ok=True)
+    os.makedirs(base_path, exist_ok = True)
     
-    # Save frames
+    # Save each frame as a JPG on disk
     for i, frame in enumerate(frames):
         # Convert RGB to BGR for OpenCV
         frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         cv2.imwrite(os.path.join(base_path, f"frame_{i:03d}.jpg"), frame_bgr)
         
-    # Save metadata
+    # Save rollout metadata alongside the frames
     with open(os.path.join(base_path, "metadata.json"), "w") as f:
-        json.dump(metadata, f, indent=4)
+        json.dump(metadata, f, indent = 4)
 
 def main():
+    # Dataset configuration
     tasks = list(POLICY_MAP.keys())
     levels = ['expert', 'near-expert', 'random']
     rollouts_per_setting = 5  # Adjust as needed for full dataset
     
     data_root = "data/metaworld"
     
+    # Iterate over tasks and behavior levels, skipping rollouts that already exist
     for task in tasks:
         for level in levels:
             print(f"Collecting {task} - {level}...")
@@ -126,7 +141,7 @@ def main():
                     continue
                 
                 try:
-                    frames, metadata = collect_rollout(task, level=level)
+                    frames, metadata = collect_rollout(task, level = level)
                     save_rollout(frames, metadata, save_path)
                     print(f"  Saved rollout {i}")
                 except Exception as e:

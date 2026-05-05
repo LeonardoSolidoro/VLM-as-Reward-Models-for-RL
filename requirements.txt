@@ -2,4 +2,10 @@ metaworld
 gymnasium
 numpy
 opencv-python
-dotenv
+python-dotenv
+packaging
+requests
+mlx-vlm
+pillow
+torch
+torchvision

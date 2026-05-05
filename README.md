@@ -53,13 +53,24 @@ data/metaworld/
 ### Collect Dataset
 To collect the trajectory data for the tasks, run:
 ```bash
-python scripts/collect_metaworld_data.py
+python src/collect_metaworld_data.py
 ```
 You can modify the `rollouts_per_setting` variable in the script to adjust the number of trajectories collected.
 
-```bash
-vllm serve cyankiwi/Qwen3-VL-4B-Instruct-AWQ-4bit \
-    --gpu-memory-utilization 0.9 \
-    --max-model-len 2048 \
-    --enforce-eager
-```
+### VLM Reward Inference
+1. Copy the env template and edit it:
+    ```bash
+    cp .env.example .env
+    ```
+2. Set the local MLX model ID, for example:
+    ```bash
+    MODEL_NAME=mlx-community/Qwen3-VL-8B-Instruct-4bit
+    MAX_TOKENS=80
+    TEMPERATURE=0.0
+    ```
+3. Run the local test:
+    ```bash
+    python src/reward_function.py
+    ```
+
+The default MLX model is `mlx-community/Qwen3-VL-8B-Instruct-4bit`, which is a good balance for a 32GB Apple Silicon Mac. If you want faster reward sweeps, use `mlx-community/Qwen3-VL-4B-Instruct-4bit`; if memory pressure becomes an issue, use `mlx-community/Qwen3-VL-2B-Instruct-4bit`.
