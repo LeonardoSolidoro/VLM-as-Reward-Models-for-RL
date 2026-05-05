@@ -1,5 +1,4 @@
 import base64
-import json
 import asyncio
 import aiohttp
 import os
@@ -37,15 +36,18 @@ async def get_reward_score(session, frame1_path, frame2_path, prompt):
     
     try:
         async with session.post(VLLM_API_URL, json=payload) as response:
+            response.raise_for_status()
             response_data = await response.json()
             content = response_data['choices'][0]['message']['content'].strip()
-            score = content.split(' ')[-1].strip()
-            return content, float(score)
+            # Extract score by finding the last number in the content
+            import re
+            scores = re.findall(r"[-+]?\d*\.\d+|\d+", content)
+            score = float(scores[-1])
+        
+            return content, score
     except Exception as e:
-        print(f"Error: {e}")
-        if 'response_data' in locals():
-            print(f"Full response data: {response_data}")
-        return None, 0.0
+        print(f"Error calling VLM API: {e}")
+        return None, None
 
 async def main():
     # Example usage:

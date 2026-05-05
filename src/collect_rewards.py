@@ -26,12 +26,25 @@ async def process_rollout(session, task, level, rollout, rollout_path, prompt, u
     
     # helper to wrap get_reward_score and store results
     async def get_and_store(step_key, frame2_path, frame1_path):
-        explanation, score = await get_reward_score(session, frame1_path, frame2_path, prompt)
-        combined_results[step_key][level][rollout].append({
-            "frame": os.path.basename(frame2_path),
-            "score": score,
-            "explanation": explanation
-        })
+        max_retries = 5
+        semaphore = asyncio.Semaphore(5)  # Limit concurrency to 5 requests
+        async with semaphore:
+            for attempt in range(max_retries):
+                explanation, score = await get_reward_score(session, frame1_path, frame2_path, prompt)
+                if explanation is not None and score is not None:
+                    combined_results[step_key][level][rollout].append({
+                        "frame": os.path.basename(frame2_path),
+                        "score": score,
+                        "explanation": explanation
+                    })
+                    return
+                
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt
+                    print(f"Retrying {task} | {rollout} | {os.path.basename(frame2_path)} in {wait_time}s... (Attempt {attempt + 2}/{max_retries})")
+                    await asyncio.sleep(wait_time)
+            
+            print(f"Failed to get reward for {task} | {rollout} | {os.path.basename(frame2_path)} after {max_retries} attempts.")
 
     # Evaluation loop every 'interval' frames
     for i in range(0, len(frames), interval):
