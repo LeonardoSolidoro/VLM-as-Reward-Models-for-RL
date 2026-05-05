@@ -4,28 +4,22 @@ import cv2
 import numpy as np
 import gymnasium as gym
 import metaworld
-from metaworld.policies import (
-    SawyerReachV3Policy,
-    SawyerPushV3Policy,
-    SawyerDrawerOpenV3Policy,
-    SawyerDoorOpenV3Policy,
-    SawyerButtonPressV3Policy,
-    SawyerPegInsertionSideV3Policy,
-    SawyerPickPlaceV3Policy
-)
+import yaml
+from metaworld import policies
 
-# Mapping tasks to their expert policies
-POLICY_MAP = {
-    'reach-v3': SawyerReachV3Policy,
-    'push-v3': SawyerPushV3Policy,
-    'drawer-open-v3': SawyerDrawerOpenV3Policy,
-    'door-open-v3': SawyerDoorOpenV3Policy,
-    'button-press-v3': SawyerButtonPressV3Policy,
-    'peg-insert-side-v3': SawyerPegInsertionSideV3Policy,
-    'pick-place-v3': SawyerPickPlaceV3Policy
-}
+# Load configuration
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "configs", "configs.yaml")
+with open(CONFIG_PATH, "r") as f:
+    config = yaml.safe_load(f)
 
-def collect_rollout(env_name, level='expert', max_steps=500, render_size=(256, 256), camera_name='corner'):
+# Mapping tasks to their expert policies using names from config
+POLICY_MAP = {}
+for task_name, task_cfg in config["tasks"].items():
+    policy_attr = task_cfg.get("policy")
+    if policy_attr and hasattr(policies, policy_attr):
+        POLICY_MAP[task_name] = getattr(policies, policy_attr)
+
+def collect_rollout(env_name, level, max_steps=200, render_size=(448, 448), camera_name='corner'):
     """Collects a single rollout from Meta-World."""
     # Use MT1 for single task environments in Meta-World
     mt1 = metaworld.MT1(env_name)
@@ -112,10 +106,13 @@ def save_rollout(frames, metadata, base_path):
 
 def main():
     tasks = list(POLICY_MAP.keys())
-    levels = ['expert', 'near-expert', 'random']
-    rollouts_per_setting = 5  # Adjust as needed for full dataset
+    levels = config.get("levels")
+    rollouts_per_setting = config.get("rollouts_per_setting")
+    camera_name = config.get("camera_name")
+    render_size = config.get("render_size")
+    max_steps = config.get("max_steps")
     
-    data_root = "data/metaworld"
+    data_root = config.get("data_root")
     
     for task in tasks:
         for level in levels:
@@ -126,7 +123,7 @@ def main():
                     continue
                 
                 try:
-                    frames, metadata = collect_rollout(task, level=level)
+                    frames, metadata = collect_rollout(task, level=level, camera_name=camera_name, render_size=render_size, max_steps=max_steps)
                     save_rollout(frames, metadata, save_path)
                     print(f"  Saved rollout {i}")
                 except Exception as e:

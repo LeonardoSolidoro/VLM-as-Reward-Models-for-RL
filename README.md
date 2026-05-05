@@ -17,7 +17,7 @@ We collect rollouts with three levels of task completion:
 - **Random**: Random action sampling.
 
 For each rollout, we store:
-- Image frames (256x256 `.jpg`) from the `topview` camera.
+- Image frames.
 - Ground-truth rewards.
 - Success metrics.
 - Actions taken.
@@ -50,16 +50,30 @@ data/metaworld/
 
 ## Usage
 
-### Collect Dataset
-To collect the trajectory data for the tasks, run:
+### 1. Collect Dataset
+To collect trajectory data for the tasks from Meta-World, run:
 ```bash
-python scripts/collect_metaworld_data.py
+python src/collect_metaworld_data.py
 ```
-You can modify the `rollouts_per_setting` variable in the script to adjust the number of trajectories collected.
+This script generates expert, near-expert, and random rollouts with frames and metadata.
 
+### 2. Set Up VLM Server
+The reward calculation depends on a running VLM server (e.g., using `vllm`). Start the server with:
 ```bash
 vllm serve cyankiwi/Qwen3-VL-4B-Instruct-AWQ-4bit \
     --gpu-memory-utilization 0.9 \
     --max-model-len 2048 \
     --enforce-eager
+```
+
+### 3. Compute VLM Rewards
+To evaluate the VLM on the collected datasets and generate potential reward scores, run:
+```bash
+python src/collect_rewards.py
+```
+
+### 4. Evaluate Metrics
+To compute correlation metrics (Pearson correlation and preference alignment) between VLM rewards and ground-truth rewards, run:
+```bash
+python src/compute_metrics.py
 ```

@@ -1,0 +1,55 @@
+# Data Path Settings
+data_root: "data/metaworld"
+output_root: "output/metaworld_rewards"
+
+# Collection Settings
+rollouts_per_setting: 1
+camera_name: "topview" # Options: 'corner', 'corner2', 'corner3', 'behindGripper', 'gripperPOV'
+levels:
+  - "expert"
+  - "near-expert"
+  - "random"
+render_size: [448, 448] # [1008, 1008]
+max_steps: 200
+
+# Task Descriptions
+tasks:
+  reach-v3:
+    description: "Move the robot gripper to the target position indicated by the red marker."
+    policy: "SawyerReachV3Policy"
+  push-v3:
+    description: "Push the green puck with the robot gripper to the designated target position."
+    policy: "SawyerPushV3Policy"
+  drawer-open-v3:
+    description: "Reach the drawer handle and pull the drawer open fully."
+    policy: "SawyerDrawerOpenV3Policy"
+  door-open-v3:
+    description: "Reach the door handle and pull the door open completely."
+    policy: "SawyerDoorOpenV3Policy"
+  button-press-v3:
+    description: "Press the button down until it is fully depressed."
+    policy: "SawyerButtonPressV3Policy"
+  peg-insert-side-v3:
+    description: "Pick up the peg and insert it horizontally into the side hole."
+    policy: "SawyerPegInsertionSideV3Policy"
+  pick-place-v3:
+    description: "Pick up the block and place it precisely into the target bin."
+    policy: "SawyerPickPlaceV3Policy"
+
+# Prompt Template
+reward_prompt_template: |
+  Task: {task_description}
+  You are a reward model for RL training that evaluates the progress towards the task goal based on two images. 
+  You are given two frames: the first frame is the initial state used as reference to identify the task objective and the second frame is the current state. 
+  Output a brief explanation of the score and a single number from 0.0 to 10.0 representing the reward score for the current state. 10.0 means the task is fully completed, while 0.0 means no progress has been made. 
+  You can use decimal points for more precision.
+  For example: 'The robot has not yet picked up the cube: 1.0'
+
+# Sampling Settings
+sampling:
+  # step_sizes: list of distances between frame1 and frame2
+  step_sizes: [1, 5, 10]
+  # use_initial_frame: if true, also compute rewards where frame1 is always frame_000
+  use_initial_frame: true
+  # evaluation_interval: how often to pick a frame 2
+  evaluation_interval: 1
