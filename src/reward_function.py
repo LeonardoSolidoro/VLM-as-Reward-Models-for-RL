@@ -58,9 +58,9 @@ async def main():
         f"Task: {task_description}\n"
         "You are a reward model for RL training that evaluates the progress towards the task goal based on two images. "
         "You are given two frames: the first frame is the initial state used as reference to identify the task objective and the second frame is the current state. "
-        "Output a brief explanation of the score and a single number from 0.0 to 10.0 representing the reward score for the current state. 10.0 means the task is fully completed, while 0.0 means no progress has been made. "
+        "Output ONLY single number from 0.0 to 10.0 representing the reward score for the current state. 10.0 means the task is fully completed, while 0.0 means no progress has been made. "
         "You can use decimal points for more precision."
-        "For example: 'The robot has not yet picked up the cube: 1.0'"
+
     )
     
     async with aiohttp.ClientSession() as session:

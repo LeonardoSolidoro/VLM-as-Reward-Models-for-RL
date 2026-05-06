@@ -27,7 +27,7 @@ async def process_rollout(session, task, level, rollout, rollout_path, prompt, u
     # helper to wrap get_reward_score and store results
     async def get_and_store(step_key, frame2_path, frame1_path):
         max_retries = 5
-        semaphore = asyncio.Semaphore(5)  # Limit concurrency to 5 requests
+        semaphore = asyncio.Semaphore(2)  # Limit concurrency to 2 requests
         async with semaphore:
             for attempt in range(max_retries):
                 explanation, score = await get_reward_score(session, frame1_path, frame2_path, prompt)
