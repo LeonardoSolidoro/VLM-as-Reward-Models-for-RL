@@ -14,7 +14,7 @@ os.environ.setdefault("TRANSFORMERS_NO_ADVISORY_WARNINGS", "1")
 MODEL_NAME = os.getenv("MODEL_NAME", "mlx-community/Qwen3-VL-8B-Instruct-4bit")
 
 # Maximum number of text tokens the model is allowed to generate for the answer
-MAX_TOKENS = int(os.getenv("MAX_TOKENS", "80"))
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", "120"))
 
 # 0.0 means deterministic decoding: the model picks the most likely next token.
 # This is useful for reward functions because repeated calls should be stable.
@@ -47,7 +47,8 @@ def _build_prompt(task_description):
     - Image A: earlier frame I_{t-k}
     - Image B: later frame I_t
 
-    The returned score is a pairwise progress reward in [-10, 10].
+    The model returns a pairwise visual preference. The reward score is derived
+    from that preference and the model's 1-10 confidence.
     """
     return (
         "You are evaluating progress in a robotic manipulation task.\n\n"
@@ -55,38 +56,53 @@ def _build_prompt(task_description):
         "You are given two images from the same robot rollout:\n"
         "- Image A: earlier frame\n"
         "- Image B: later frame\n\n"
-        "Your task is to judge how much visual progress toward the task goal has been made from Image A to Image B.\n"
-        "This is a relative progress judgment, not an absolute task-completion judgment.\n"
-        "Do not judge only whether Image B looks like the final goal state.\n"
-        "Judge whether Image B shows task-relevant progress toward the goal compared to Image A.\n\n"
-        "Use an integer score from -10 to 10:\n"
-        "- Negative scores mean regression: Image B is worse than Image A for the task goal.\n"
-        "- 0 means no meaningful task-relevant change.\n"
-        "- Positive scores mean progress: Image B is better than Image A for the task goal.\n\n"
-        "Scale guide:\n"
-        "-10: clear regression; Image B is much worse than Image A\n"
-        "-5: moderate regression; Image B is somewhat worse than Image A\n"
-        "0: no meaningful progress; Image B is about equally good as Image A\n"
-        "5: moderate progress; Image B is clearly better than Image A but far from complete\n"
-        "10: strong progress or task completion compared to Image A\n\n"
+        "Your task is to decide which image shows more visible progress toward the task goal.\n"
+        "This is a relative visual comparison, not an absolute task-completion judgment.\n"
+        "Choose Image B only if it is visibly better for the task goal than Image A.\n"
+        "Choose Image A if Image B is visibly worse for the task goal than Image A.\n"
+        "Choose same if there is no meaningful visible task-relevant difference.\n"
+        "Choose unclear if the visual evidence is too ambiguous to judge.\n\n"
         "Consider only visually observable task progress. Ignore camera changes, lighting changes, "
         "background changes, and irrelevant robot motion.\n\n"
-        "Output exactly one JSON-formatted text object with two fields: score and reason.\n"
-        "The score must be an integer between -10 and 10.\n"
-        "The reason must be one short sentence explaining only changes that are directly visible.\n"
+        "Do not infer hidden physical events from the task description alone. "
+        "Do not claim contact, grasping, pulling, pushing, pressing, lifting, opening, insertion, "
+        "or completion unless it is directly visible in the images.\n\n"
+        "Output exactly one JSON-formatted text object with three fields: preference, confidence_score, and visible_change.\n"
+        'The preference must be one of: "A", "B", "same", or "unclear".\n'
+        "The confidence_score must be an integer from 1 to 10, where 1 means very uncertain and 10 means very certain.\n"
+        "The visible_change must be one short sentence describing only directly visible evidence.\n"
+        "Example output:\n"
+        "{\n"
+        '  "preference": "B",\n'
+        '  "confidence_score": 6,\n'
+        '  "visible_change": "The robot gripper is visibly closer to the target object in Image B."\n'
+        "}\n"
         "Do not include markdown, comments, or any text outside the JSON object.\n"
     )
 
 
 def _extract_score(text: str) -> float:
     """
-    Extract score from Qwen output.
+    Convert Qwen's pairwise preference output into a signed reward.
+
+    Image B is the later/current frame, so "B" means positive progress and "A"
+    means regression. "same" and "unclear" are conservative zero rewards.
     """
     data = json.loads(text.strip())
-    return _clamp_score(float(data["score"]))
+    preference = str(data["preference"]).strip().lower()
+    confidence = _clamp_confidence(float(data["confidence_score"]))
 
-def _clamp_score(score):
-    return max(-10.0, min(10.0, score))
+    if preference == "b":
+        return confidence
+    if preference == "a":
+        return -confidence
+    if preference in {"same", "unclear"}:
+        return 0.0
+    raise ValueError(f"Unexpected preference value: {data['preference']}")
+
+
+def _clamp_confidence(score):
+    return max(1.0, min(10.0, score))
 
 def _load_mlx_model():
     """
@@ -171,7 +187,7 @@ def get_reward_score(frame1_path, frame2_path, task_description):
 if __name__ == "__main__":
     repo_root = Path(__file__).resolve().parent.parent
     frame1 = repo_root / "data" / "metaworld" / "drawer-open-v3" / "expert" / "rollout_0" / "frame_000.jpg"
-    frame2 = repo_root / "data" / "metaworld" / "drawer-open-v3" / "expert" / "rollout_0" / "frame_300.jpg"
+    frame2 = repo_root / "data" / "metaworld" / "drawer-open-v3" / "expert" / "rollout_0" / "frame_058.jpg"
     task = (
         "Open the green drawer by pulling the white handle outward."
     )
