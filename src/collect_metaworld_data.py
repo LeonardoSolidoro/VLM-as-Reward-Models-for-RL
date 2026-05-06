@@ -29,7 +29,7 @@ def collect_rollout(
     env_name,
     level = 'expert',
     max_steps = 500,
-    render_size = (256, 256),
+    render_size = (512, 512),
     camera_name = 'corner'
 ):
     """Collects a single rollout from Meta-World."""
@@ -88,9 +88,10 @@ def collect_rollout(
         # 2) Choose an action based on the requested rollout level
         if level == 'expert':
             action = policy.get_action(obs)
+            action = np.clip(action, -1, 1)
         elif level == 'near-expert':
             # Add Gaussian noise to expert actions for "near-expert" behavior
-            action = policy.get_action(obs) + np.random.normal(0, 1, size = 4)
+            action = policy.get_action(obs) + np.random.normal(0, 0.2, size = 4)
             action = np.clip(action, -1, 1)
         else:  # random
             action = env.action_space.sample()

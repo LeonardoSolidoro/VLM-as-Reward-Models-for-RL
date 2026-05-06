@@ -1,5 +1,5 @@
+import json
 import os
-import re
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -42,52 +42,55 @@ _MLX_PROCESSOR = None
 def _build_prompt(task_description):
     """
     Build the instruction given to Qwen3-VL.
+
+    Expected image order:
+    - Image A: earlier frame I_{t-k}
+    - Image B: later frame I_t
+
+    The returned score is a pairwise progress reward in [-10, 10].
     """
     return (
-        f"Task: {task_description}\n"
-        "You are a reward model for robotic reinforcement learning.\n"
-        "You will receive exactly two images from the same rollout:\n"
-        "Image 1 is the earlier reference frame.\n"
-        "Image 2 is the later/current frame.\n"
-        "Score how much progress Image 2 shows toward the task compared with Image 1.\n"
-        "Use 0.0 for no progress, negative progress, or a clearly failed state.\n"
-        "Use 10.0 only when the task appears completed.\n"
-        "Intermediate scores should reflect partial progress toward the goal.\n"
-        "Return one short sentence, then a final line in exactly this format:\n"
-        "SCORE: <number from 0.0 to 10.0>"
+        "You are evaluating progress in a robotic manipulation task.\n\n"
+        f"Task goal:\n{task_description}\n\n"
+        "You are given two images from the same robot rollout:\n"
+        "- Image A: earlier frame\n"
+        "- Image B: later frame\n\n"
+        "Your task is to judge how much visual progress toward the task goal has been made from Image A to Image B.\n"
+        "This is a relative progress judgment, not an absolute task-completion judgment.\n"
+        "Do not judge only whether Image B looks like the final goal state.\n"
+        "Judge whether Image B shows task-relevant progress toward the goal compared to Image A.\n\n"
+        "Use an integer score from -10 to 10:\n"
+        "- Negative scores mean regression: Image B is worse than Image A for the task goal.\n"
+        "- 0 means no meaningful task-relevant change.\n"
+        "- Positive scores mean progress: Image B is better than Image A for the task goal.\n\n"
+        "Scale guide:\n"
+        "-10: clear regression; Image B is much worse than Image A\n"
+        "-5: moderate regression; Image B is somewhat worse than Image A\n"
+        "0: no meaningful progress; Image B is about equally good as Image A\n"
+        "5: moderate progress; Image B is clearly better than Image A but far from complete\n"
+        "10: strong progress or task completion compared to Image A\n\n"
+        "Consider only visually observable task progress. Ignore camera changes, lighting changes, "
+        "background changes, and irrelevant robot motion.\n\n"
+        "Output exactly one JSON-formatted text object with two fields: score and reason.\n"
+        "The score must be an integer between -10 and 10.\n"
+        "The reason must be one short sentence explaining only changes that are directly visible.\n"
+        "Do not include markdown, comments, or any text outside the JSON object.\n"
     )
 
 
-def _extract_score(text):
+def _extract_score(text: str) -> float:
     """
-    Convert the model's text answer into a Python float.
-
-    The prompt asks for a line like "SCORE: 6.5". We parse that first. If the
-    model ignores the exact format, the fallback takes the last number in the
-    answer, which is usually still the score.
+    Extract score from Qwen output.
     """
-    score_match = re.search(r"score\s*:\s*([-+]?\d*\.?\d+)", text, re.IGNORECASE)
-    if score_match:
-        return _clamp_score(float(score_match.group(1)))
-
-    matches = re.findall(r"[-+]?\d*\.?\d+", text)
-    if not matches:
-        raise ValueError("No numeric score found in model output")
-    return _clamp_score(float(matches[-1]))
-
+    data = json.loads(text.strip())
+    return _clamp_score(float(data["score"]))
 
 def _clamp_score(score):
-    # Keep malformed model outputs from producing rewards outside the rubric.
-    return max(0.0, min(10.0, score))
-
+    return max(-10.0, min(10.0, score))
 
 def _load_mlx_model():
     """
     Load Qwen3-VL with mlx-vlm.
-
-    In MLX-VLM, "model" is the neural network weights and architecture, while
-    "processor" handles the non-obvious input/output details: chat templates,
-    tokenization, image preprocessing, and detokenization.
     """
     global _MLX_MODEL, _MLX_PROCESSOR
     if _MLX_MODEL is None:
@@ -111,17 +114,9 @@ def _load_mlx_model():
 
 def _build_mlx_prompt(prompt, processor, model):
     """
-    Wrap our plain instruction in the model's expected chat format.
-
-    Different VLMs expect different special tokens around text and images.
-    "apply_chat_template" inserts those tokens for this specific model. The
-    "num_images = 2" argument is important because Qwen3-VL needs placeholders for
-    both the earlier and later frame.
+    Wrap the plain instruction in the model's expected chat format.
     """
-    try:
-        from mlx_vlm import apply_chat_template
-    except Exception:
-        return prompt
+    from mlx_vlm import apply_chat_template
 
     return apply_chat_template(
         processor,
@@ -134,10 +129,6 @@ def _build_mlx_prompt(prompt, processor, model):
 def _mlx_generate(prompt, frame_paths):
     """
     Run local Qwen3-VL inference on two image files.
-
-    "generate" receives the formatted prompt and the local image paths. MLX-VLM
-    loads the images, preprocesses them, runs the model locally on the Mac, and
-    returns generated text. No API server is involved here.
     """
     from mlx_vlm import generate
 
@@ -162,36 +153,28 @@ def get_reward_score(frame1_path, frame2_path, task_description):
     Compute a pairwise progress reward from two rollout frames.
 
     Args:
-        frame1_path: Earlier framefrom the rollout.
+        frame1_path: Earlier frame from the rollout.
         frame2_path: Later/current frame from the rollout.
         task_description: Natural-language task goal, e.g. "open the drawer".
 
     Returns:
         A tuple `(content, score)`, where `content` is the raw explanation from
-        the VLM and `score` is a float in the range 0.0 to 10.0.
+        the VLM and `score` is a float in the range -10.0 to 10.0.
     """
 
     prompt = _build_prompt(task_description)
     content = _mlx_generate(prompt, [frame1_path, frame2_path])
+    score = _extract_score(content)
 
-    try:
-        score = _extract_score(content)
-        return content, score
-    except Exception as e:
-        # Reward code should fail softly during data collection/training.
-        # Returning 0.0 is conservative if the VLM response cannot be parsed.
-        print(f"Error: {e}")
-        print(f"Full response data: {content}")
-        return None, 0.0
-
+    return content, score
 
 if __name__ == "__main__":
-    # Minimal local smoke test. The first run may take a while because MLX-VLM
-    # downloads the model from Hugging Face and loads it into memory.
     repo_root = Path(__file__).resolve().parent.parent
     frame1 = repo_root / "data" / "metaworld" / "drawer-open-v3" / "expert" / "rollout_0" / "frame_000.jpg"
-    frame2 = repo_root / "data" / "metaworld" / "drawer-open-v3" / "expert" / "rollout_0" / "frame_030.jpg"
-    task = "Reach the drawer handle and open the drawer fully."
+    frame2 = repo_root / "data" / "metaworld" / "drawer-open-v3" / "expert" / "rollout_0" / "frame_300.jpg"
+    task = (
+        "Open the green drawer by pulling the white handle outward."
+    )
     content, score = get_reward_score(str(frame1), str(frame2), task)
     print(f"Reward Score: {score}")
     print(f"Explanation: {content}")
