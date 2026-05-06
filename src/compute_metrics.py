@@ -14,6 +14,7 @@ def compute_metrics():
     output_root = config.get("output_root")
     camera_name = config.get("camera_name")
     rewards_path = os.path.join(output_root, camera_name)
+    data_path = os.path.join(data_root, camera_name)
     
     if not os.path.exists(rewards_path):
         print(f"Error: Rewards path {rewards_path} does not exist.")
@@ -39,7 +40,7 @@ def compute_metrics():
             for rollout_id, frames_data in rollouts.items():
                 
                 # 1. Load Ground Truth Rewards
-                gt_metadata_path = os.path.join(data_root, task, level, rollout_id, "metadata.json")
+                gt_metadata_path = os.path.join(data_path, task, level, rollout_id, "metadata.json")
                 
                 with open(gt_metadata_path, "r") as f:
                     gt_metadata = json.load(f)

@@ -24,7 +24,7 @@ For each rollout, we store:
 
 ### Directory Structure
 ```
-data/metaworld/
+data/metaworld/{camera_name}
 └── {task}/
     └── {level}/
         └── rollout_{i}/

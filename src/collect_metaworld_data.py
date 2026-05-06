@@ -117,7 +117,7 @@ def main():
         for level in levels:
             print(f"Collecting {task} - {level}...")
             for i in range(rollouts_per_setting):
-                save_path = os.path.join(data_root, task, level, f"rollout_{i}")
+                save_path = os.path.join(data_root, camera_name, task, level, f"rollout_{i}")
                 if os.path.exists(save_path):
                     continue
                 

@@ -2,4 +2,4 @@ metaworld
 gymnasium
 numpy
 opencv-python
-dotenv
+python-dotenv

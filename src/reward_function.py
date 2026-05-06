@@ -51,16 +51,14 @@ async def get_reward_score(session, frame1_path, frame2_path, prompt):
 
 async def main():
     # Example usage:
-    frame1 = "/home/leonardo/Projects/VLM-as-Reward-Models-for-RL/data/metaworld/door-open-v3/expert/rollout_0/frame_000.jpg"
-    frame2 = "/home/leonardo/Projects/VLM-as-Reward-Models-for-RL/data/metaworld/door-open-v3/expert/rollout_0/frame_020.jpg"
+    frame1 = "/home/leonardo/Projects/VLM-as-Reward-Models-for-RL/data/metaworld/corner2/door-open-v3/expert/rollout_0/frame_000.jpg"
+    frame2 = "/home/leonardo/Projects/VLM-as-Reward-Models-for-RL/data/metaworld/corner2/door-open-v3/expert/rollout_0/frame_020.jpg"
     task_description = "Reach the door handle and open the door completely."
     prompt = (
         f"Task: {task_description}\n"
         "You are a reward model for RL training that evaluates the progress towards the task goal based on two images. "
         "You are given two frames: the first frame is the initial state used as reference to identify the task objective and the second frame is the current state. "
-        "Output ONLY single number from 0.0 to 10.0 representing the reward score for the current state. 10.0 means the task is fully completed, while 0.0 means no progress has been made. "
-        "You can use decimal points for more precision."
-
+        "Describe the robot's progress toward the goal, then provide the reward as a single number from 0.0 to 10.0 representing the reward score for the current state. 10.0 means the task is fully completed, while 0.0 means no progress has been made. "
     )
     
     async with aiohttp.ClientSession() as session:

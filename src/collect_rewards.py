@@ -69,8 +69,11 @@ async def process_rollout(session, task, level, rollout, rollout_path, prompt, u
 
 async def run_pipeline():
     data_root = config.get("data_root")
+    camera_name = config.get("camera_name")
+    data_path = os.path.join(data_root, camera_name)
+    
     output_root = config.get("output_root")
-    output_root = os.path.join(output_root, config.get("camera_name"))
+    output_root = os.path.join(output_root, camera_name)
     os.makedirs(output_root, exist_ok=True)
 
     sampling_cfg = config.get("sampling")
@@ -79,14 +82,18 @@ async def run_pipeline():
     interval = sampling_cfg.get("evaluation_interval")
 
     # Find all tasks in the data directory
-    tasks_to_process = [d for d in os.listdir(data_root) if os.path.isdir(os.path.join(data_root, d))]
+    if not os.path.exists(data_path):
+        print(f"Error: Data path {data_path} does not exist.")
+        return
+        
+    tasks_to_process = [d for d in os.listdir(data_path) if os.path.isdir(os.path.join(data_path, d))]
     
     async with aiohttp.ClientSession() as session:
         for task in tasks_to_process:
             task_desc = TASK_DESCRIPTIONS.get(task)
             prompt = config["reward_prompt_template"].format(task_description=task_desc)
 
-            task_path = os.path.join(data_root, task)
+            task_path = os.path.join(data_path, task)
             levels = [d for d in os.listdir(task_path) if os.path.isdir(os.path.join(task_path, d))]
             
             # We will separate results by comparison step (initial vs step_X)

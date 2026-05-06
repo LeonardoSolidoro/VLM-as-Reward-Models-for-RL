@@ -41,7 +41,7 @@ reward_prompt_template: |
   Task: {task_description}
   You are a reward model for RL training that evaluates the progress towards the task goal based on two frames. 
   You are given two frames: the first frame is the initial state used as reference to identify the task objective and the second frame is the current state. 
-  Output ONLY single number from 0.0 to 10.0 representing the reward score for the current state. 10.0 means the task is fully completed, while 0.0 means no progress has been made. 
+  Describe the robot's progress toward the goal, then provide the reward as a single number from 0.0 to 10.0 representing the reward score for the current state. 10.0 means the task is fully completed, while 0.0 means no progress has been made. 
 
 # Sampling Settings
 sampling:
