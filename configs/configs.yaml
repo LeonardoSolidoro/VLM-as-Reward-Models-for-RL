@@ -45,5 +45,7 @@ reward_prompt_template: |
   order. For each frame, format your response as follow: Frame {i}:
   Frame Description: {}, Task Completion Percentages:{}%
 
-# Sampling Settings
-sampling:
+# Experiment Settings
+experiment_name: "exp1.1"
+views: ["topview"]
+frames_in_context: 30
