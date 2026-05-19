@@ -1,31 +1,21 @@
 # Data Path Settings
 data_root: "data/metaworld"
 output_root: "output/metaworld_rewards"
+seed: 42
 
 # Collection Settings
 rollouts_per_setting: 1
-camera_name: "corner2" # Options: 'topview' 'corner', 'corner2', 'corner3', 'behindGripper', 'gripperPOV'
+camera_names: ["topview", "corner", "corner2"] # Options: 'topview' 'corner', 'corner2', 'corner3', 'behindGripper', 'gripperPOV'
 levels:
   - "expert"
-  - "near-expert"
+  - "partial"
   - "random"
-render_size: [448, 448] # [1008, 1008]
-max_steps: 200
 
 # Task Descriptions
 tasks:
-  reach-v3:
-    description: "Move the robot gripper to the target position indicated by the red marker."
-    policy: "SawyerReachV3Policy"
-  push-v3:
-    description: "Push the green puck with the robot gripper to the designated target position."
-    policy: "SawyerPushV3Policy"
   drawer-open-v3:
     description: "Reach the drawer handle and pull the drawer open fully."
     policy: "SawyerDrawerOpenV3Policy"
-  door-open-v3:
-    description: "Reach the door handle and pull the door open completely."
-    policy: "SawyerDoorOpenV3Policy"
   button-press-v3:
     description: "Press the red button down until it is fully depressed."
     policy: "SawyerButtonPressV3Policy"
@@ -38,16 +28,22 @@ tasks:
 
 # Prompt Template
 reward_prompt_template: |
-  Task: {task_description}
-  You are a reward model for RL training that evaluates the progress towards the task goal based on two frames. 
-  You are given two frames: the first frame is the initial state used as reference to identify the task objective and the second frame is the current state. 
-  Describe the robot's progress toward the goal, then provide the reward as a single number from 0.0 to 10.0 representing the reward score for the current state. 10.0 means the task is fully completed, while 0.0 means no progress has been made. 
+  You are an expert roboticist tasked to predict task completion
+  percentages for frames of a robot for the task of {task_description}.
+  The task completion percentages are between 0 and 100, where 100
+  corresponds to full task completion. We provide several examples of
+  the robot performing the task at various stages and their
+  corresponding task completion percentages. Note that these frames are
+  in random order, so please pay attention to the individual frames
+  when reasoning about task completion percentage.
+
+  Initial robot scene: [IMG]
+  In the initial robot scene, the task completion percentage is 0.
+
+  Now, for the task of {task_description}, output the task completion
+  percentage for the following frames that are presented in random
+  order. For each frame, format your response as follow: Frame {i}:
+  Frame Description: {}, Task Completion Percentages:{}%
 
 # Sampling Settings
 sampling:
-  # step_sizes: list of distances between frame1 and frame2
-  step_sizes: []
-  # use_initial_frame: if true, also compute rewards where frame1 is always frame_000
-  use_initial_frame: true
-  # evaluation_interval: how often to pick a frame 2
-  evaluation_interval: 1

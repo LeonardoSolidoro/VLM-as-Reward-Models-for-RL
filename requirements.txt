@@ -3,3 +3,6 @@ gymnasium
 numpy
 opencv-python
 python-dotenv
+pyyaml
+scipy
+aiohttp
