@@ -4,146 +4,190 @@ import glob
 import yaml
 import asyncio
 import aiohttp
+import random
 from reward_function import get_reward_score
+from utilities import set_all_seeds
 
 # Load configuration
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "configs", "configs.yaml")
 with open(CONFIG_PATH, "r") as f:
     config = yaml.safe_load(f)
 
+seed = config.get("seed")
+set_all_seeds(seed)
+
 # Extract task descriptions from config
 TASK_DESCRIPTIONS = {name: cfg["description"] for name, cfg in config["tasks"].items()}
 
-async def process_rollout(session, task, level, rollout, rollout_path, prompt, use_initial, step_sizes, interval, combined_results):
+def load_in_context_example(task, view):
+    ic_path = os.path.join("data", "metaworld", "in-context-example", task, "in_context_data.json")
+    if not os.path.exists(ic_path):
+        return "", []
+    with open(ic_path, "r") as f:
+        ic_data = json.load(f)
+        
+    ic_str = "In-context Example (Expert Demo):\n"
+    ic_images = []
+    
+    for i, frame in enumerate(ic_data):
+        ic_str += f"Frame {i}: [IMG]\n"
+        ic_str += f"Task Completion Percentage: <score>{frame['percentage']}%</score>\n"
+        
+        img_name = frame["images"].get(view)
+        if img_name:
+            img_path = os.path.join("data", "metaworld", "in-context-example", task, img_name)
+            ic_images.append(img_path)
+            
+    return ic_str, ic_images
+
+async def process_rollout(session, task, level, rollout, rollout_path, prompt_template, views, frames_in_context, ic_str, ic_images, combined_results, experiment_shuffle_frames):
     print(f"Processing {task} | {level} | {rollout}...")
     
-    # Get all frames, sorted
-    frames = sorted(glob.glob(os.path.join(rollout_path, "frame_*.jpg")))
-    if not frames:
+    view = views[0] if views else "topview"
+    
+    # Get all frames for the specific view
+    all_files = glob.glob(os.path.join(rollout_path, f"{view}_*.jpg"))
+    frame_indices = set()
+    for f in all_files:
+        basename = os.path.basename(f)
+        try:
+            parts = basename.replace(".jpg", "").split("_frame_")
+            frame_indices.add(int(parts[1]))
+        except:
+            continue
+    
+    if not frame_indices:
         return
-
-    tasks = []
-    
-    # helper to wrap get_reward_score and store results
-    async def get_and_store(step_key, frame2_path, frame1_path):
-        max_retries = 5
-        semaphore = asyncio.Semaphore(2)  # Limit concurrency to 2 requests
-        async with semaphore:
-            for attempt in range(max_retries):
-                explanation, score = await get_reward_score(session, frame1_path, frame2_path, prompt)
-                if explanation is not None and score is not None:
-                    combined_results[step_key][level][rollout].append({
-                        "frame": os.path.basename(frame2_path),
-                        "score": score,
-                        "explanation": explanation
-                    })
-                    return
-                
-                if attempt < max_retries - 1:
-                    wait_time = 2 ** attempt
-                    print(f"Retrying {task} | {rollout} | {os.path.basename(frame2_path)} in {wait_time}s... (Attempt {attempt + 2}/{max_retries})")
-                    await asyncio.sleep(wait_time)
-            
-            print(f"Failed to get reward for {task} | {rollout} | {os.path.basename(frame2_path)} after {max_retries} attempts.")
-
-    # Evaluation loop every 'interval' frames
-    for i in range(0, len(frames), interval):
-        frame2_path = frames[i]
         
-        # 1. Fixed Initial Frame logic
-        if use_initial:
-            frame1_path = frames[0]
-            tasks.append(get_and_store("initial", frame2_path, frame1_path))
-
-        # 2. Dynamic Step Size logic
-        for step in step_sizes:
-            idx1 = max(0, i - step)
-            if idx1 == i and i > 0:
-                continue
-                
-            frame1_path = frames[idx1]
-            tasks.append(get_and_store(f"step_{step}", frame2_path, frame1_path))
+    sorted_indices = sorted(list(frame_indices))
     
-    if tasks:
-        await asyncio.gather(*tasks)
+    # Guarantee the first frame is always index 0
+    first_frame = sorted_indices[0]
+    other_frames = sorted_indices[1:]
+    
+    # Subsample remaining frames
+    if len(other_frames) > frames_in_context - 1:
+        sampled_others = random.sample(other_frames, frames_in_context - 1)
+    else:
+        sampled_others = other_frames
+
+    # Shuffle the remaining frames conditionally
+    if experiment_shuffle_frames:
+        random.shuffle(sampled_others)
+    else:
+        sampled_others = sorted(sampled_others)
+    
+    # Assembly: First frame is passed separately in the prompt as [IMG]
+    image_paths = list(ic_images)
+    image_paths.append(os.path.join(rollout_path, f"{view}_frame_{first_frame:03d}.jpg"))
+    
+    frames_list_str = ""
+    for i, idx in enumerate(sampled_others):
+        # We start enumeration at 1 for the predicted frames
+        frames_list_str += f"Frame {i+1}: [IMG]\n"
+        path = os.path.join(rollout_path, f"{view}_frame_{idx:03d}.jpg")
+        image_paths.append(path)
+    
+    prompt = prompt_template.format(
+        task_description=TASK_DESCRIPTIONS.get(task, task),
+        in_context_example=ic_str,
+        frames_list=frames_list_str
+    )
+    
+    max_retries = 3
+    for attempt in range(max_retries):
+        explanation, scores_dict = await get_reward_score(session, prompt, image_paths)
+        if explanation is not None and scores_dict is not None:
+            # The first frame is explicitly 0% as per the prompt
+            results_list = [{
+                "frame": f"{view}_frame_{first_frame:03d}.jpg",
+                "score": 0.0
+            }]
+            
+            # The remaining frames were enumerated starting at 1
+            for i, original_idx in enumerate(sampled_others):
+                score = scores_dict.get(i + 1, None)
+                if score is not None:
+                    results_list.append({
+                        "frame": f"{view}_frame_{original_idx:03d}.jpg",
+                        "score": score
+                    })
+            
+            combined_results[level][rollout] = results_list
+            return
+        await asyncio.sleep(1)
+
+    print(f"Failed to get reward for {task} | {rollout} after {max_retries} attempts.")
 
 async def run_pipeline():
     data_root = config.get("data_root")
-    camera_name = config.get("camera_name")
-    data_path = os.path.join(data_root, camera_name)
-    
     output_root = config.get("output_root")
-    output_root = os.path.join(output_root, camera_name)
     os.makedirs(output_root, exist_ok=True)
 
-    sampling_cfg = config.get("sampling")
-    step_sizes = sampling_cfg.get("step_sizes")
-    use_initial = sampling_cfg.get("use_initial_frame")
-    interval = sampling_cfg.get("evaluation_interval")
+    experiment_name = config.get("experiment_name", "exp_default")
+    views = config.get("views", ["topview"])
+    frames_in_context = config.get("frames_in_context", 30)
+    prompt_template = config["reward_prompt_template"]
+    experiment_levels = config.get("experiment_levels", None)
+    experiment_shuffle_frames = config.get("experiment_shuffle_frames", True)
+    experiment_in_context_examples = config.get("experiment_in_context_examples", 1)
 
-    # Find all tasks in the data directory
-    if not os.path.exists(data_path):
-        print(f"Error: Data path {data_path} does not exist.")
+    view = views[0] if views else "topview"
+
+    if not os.path.exists(data_root):
+        print(f"Error: Data path {data_root} does not exist.")
         return
         
-    tasks_to_process = [d for d in os.listdir(data_path) if os.path.isdir(os.path.join(data_path, d))]
+    tasks_to_process = [d for d in os.listdir(data_root) if os.path.isdir(os.path.join(data_root, d)) and d != "in-context-example"]
     
     async with aiohttp.ClientSession() as session:
         for task in tasks_to_process:
-            task_desc = TASK_DESCRIPTIONS.get(task)
-            prompt = config["reward_prompt_template"].format(task_description=task_desc)
-
-            task_path = os.path.join(data_path, task)
+            if experiment_in_context_examples > 0:
+                ic_str, ic_images = load_in_context_example(task, view)
+            else:
+                ic_str, ic_images = "", []
+                
+            task_path = os.path.join(data_root, task)
             levels = [d for d in os.listdir(task_path) if os.path.isdir(os.path.join(task_path, d))]
             
-            # We will separate results by comparison step (initial vs step_X)
-            combined_results = {}
-            steps = []
-            if use_initial: 
-                steps.append("initial")
-            for s in step_sizes: 
-                steps.append(f"step_{s}")
+            if experiment_levels:
+                levels = [lvl for lvl in levels if lvl in experiment_levels]
             
-            for t in steps:
-                combined_results[t] = {}
-
+            combined_results = {}
             rollout_tasks = []
+            
             for level in levels:
+                combined_results[level] = {}
                 level_path = os.path.join(task_path, level)
                 rollouts = [d for d in os.listdir(level_path) if os.path.isdir(os.path.join(level_path, d))]
                 
-                for t in steps:
-                    combined_results[t][level] = {}
-                
                 for rollout in rollouts:
                     rollout_path = os.path.join(level_path, rollout)
-                    for t in steps:
-                        combined_results[t][level][rollout] = []
+                    combined_results[level][rollout] = None
                     
                     rollout_tasks.append(process_rollout(
-                        session, task, level, rollout, rollout_path, prompt, 
-                        use_initial, step_sizes, interval, combined_results
+                        session, task, level, rollout, rollout_path, prompt_template,
+                        views, frames_in_context, ic_str, ic_images, combined_results,
+                        experiment_shuffle_frames
                     ))
             
             if rollout_tasks:
                 await asyncio.gather(*rollout_tasks)
 
-            # Save results into distinct files for each task and step size
-            for t in steps:
-                output_file = os.path.join(output_root, f"{task}_{t}_rewards.json")
-                # Sort frames in each rollout before saving to ensure consistency
-                for level in combined_results[t]:
-                    for rollout in combined_results[t][level]:
-                        combined_results[t][level][rollout].sort(key=lambda x: x["frame"])
-                
+            # Save results
+            for level, results in combined_results.items():
+                # Clean up None results
+                clean_results = {k: v for k, v in results.items() if v is not None}
+                output_file = os.path.join(output_root, experiment_name, f"{task}_{level}_rewards.json")
+                os.makedirs(os.path.dirname(output_file), exist_ok=True)
                 with open(output_file, "w") as f:
                     json.dump({
                         "task": task,
-                        "step": t,
-                        "description": task_desc,
-                        "results": combined_results[t]
+                        "step": "eval",
+                        "level": level,
+                        "results": clean_results
                     }, f, indent=4)
-                print(f"Saved results for {task} ({t}) to {output_file}")
+                print(f"Saved results of experiment {experiment_name} for {task} ({level}) to {output_file}")
 
 if __name__ == "__main__":
     asyncio.run(run_pipeline())

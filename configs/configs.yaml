@@ -4,7 +4,7 @@ output_root: "output/metaworld_rewards"
 seed: 42
 
 # Collection Settings
-rollouts_per_setting: 1
+rollouts_per_setting: 5
 camera_names: ["topview", "corner", "corner2"] # Options: 'topview' 'corner', 'corner2', 'corner3', 'behindGripper', 'gripperPOV'
 levels:
   - "expert"
@@ -14,16 +14,16 @@ levels:
 # Task Descriptions
 tasks:
   drawer-open-v3:
-    description: "Reach the drawer handle and pull the drawer open fully."
+    description: "Control the Sawyer robot arm to approach the drawer handle, grasp it, and pull the drawer completely open towards the robot."
     policy: "SawyerDrawerOpenV3Policy"
   button-press-v3:
-    description: "Press the red button down until it is fully depressed."
+    description: "Control the Sawyer robot arm to move its gripper directly above the red button and press it down fully."
     policy: "SawyerButtonPressV3Policy"
   peg-insert-side-v3:
-    description: "Pick up the green peg and insert it horizontally into the hole on the red side of the brown box."
+    description: "Control the Sawyer robot arm to pick up the long cylindrical peg and insert it horizontally into the circular hole on the side of the box."
     policy: "SawyerPegInsertionSideV3Policy"
   pick-place-v3:
-    description: "Pick up the block and place it precisely into the target bin."
+    description: "Control the Sawyer robot arm to grasp the small puck/block on the table, lift it up, and place it precisely onto the target goal location."
     policy: "SawyerPickPlaceV3Policy"
 
 # Prompt Template
@@ -31,21 +31,31 @@ reward_prompt_template: |
   You are an expert roboticist tasked to predict task completion
   percentages for frames of a robot for the task of {task_description}.
   The task completion percentages are between 0 and 100, where 100
-  corresponds to full task completion. We provide several examples of
-  the robot performing the task at various stages and their
+  corresponds to full task completion. We provide an example of
+  the robot performing a task at various stages and their
   corresponding task completion percentages. Note that these frames are
   in random order, so please pay attention to the individual frames
   when reasoning about task completion percentage.
+
+  {in_context_example}
 
   Initial robot scene: [IMG]
   In the initial robot scene, the task completion percentage is 0.
 
   Now, for the task of {task_description}, output the task completion
   percentage for the following frames that are presented in random
-  order. For each frame, format your response as follow: Frame {i}:
-  Frame Description: {}, Task Completion Percentages:{}%
+  order. For each frame, you must format your response exactly as follows, ending with a score enclosed in xml tags:
+  Frame X:
+  Frame Description: <your description here>
+  Task Completion Percentage: <score>XX%</score>
+  
+  Please provide your predictions for the following frames:
+  {frames_list}
 
 # Experiment Settings
 experiment_name: "exp1.1"
 views: ["topview"]
 frames_in_context: 30
+experiment_levels: ["expert"]
+experiment_shuffle_frames: true
+experiment_in_context_examples: 1

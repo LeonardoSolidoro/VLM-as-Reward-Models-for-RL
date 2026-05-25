@@ -2,19 +2,23 @@ import os
 import json
 import yaml
 import numpy as np
-from scipy.stats import pearsonr
+from scipy.stats import spearmanr
+from utilities import set_all_seeds
 
 # Load configuration
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "configs", "configs.yaml")
 with open(CONFIG_PATH, "r") as f:
     config = yaml.safe_load(f)
 
+seed = config.get("seed")
+set_all_seeds(seed)
+
 def compute_metrics():
     data_root = config.get("data_root")
     output_root = config.get("output_root")
-    camera_name = config.get("camera_name")
-    rewards_path = os.path.join(output_root, camera_name)
-    data_path = os.path.join(data_root, camera_name)
+    experiment_name = config.get("experiment_name", "exp_default")
+    rewards_path = os.path.join(output_root, experiment_name)
+    data_path = data_root
     
     if not os.path.exists(rewards_path):
         print(f"Error: Rewards path {rewards_path} does not exist.")
@@ -24,6 +28,9 @@ def compute_metrics():
     reward_files = [f for f in os.listdir(rewards_path) if f.endswith("_rewards.json")]
     
     overall_metrics = {}
+    
+    global_pearson = []
+    global_preference = []
 
     for reward_file in reward_files:
         with open(os.path.join(rewards_path, reward_file), "r") as f:
@@ -35,75 +42,96 @@ def compute_metrics():
         
         task_pearson = []
         task_preference = []
+        
+        level = vlm_data["level"]
 
-        for level, rollouts in results.items():
-            for rollout_id, frames_data in rollouts.items():
+        for rollout_id, frames_data in results.items():
+            
+            # 1. Load Ground Truth Rewards
+            gt_metadata_path = os.path.join(data_path, task, level, rollout_id, "rewards.json")
                 
-                # 1. Load Ground Truth Rewards
-                gt_metadata_path = os.path.join(data_path, task, level, rollout_id, "metadata.json")
+            if not os.path.exists(gt_metadata_path):
+                continue
                 
-                with open(gt_metadata_path, "r") as f:
-                    gt_metadata = json.load(f)
+            with open(gt_metadata_path, "r") as f:
+                gt_rewards = json.load(f)
+            
+            # 2. Align VLM rewards with GT rewards (Sort chronologically)
+            frames_data_sorted = sorted(frames_data, key=lambda x: int(x["frame"].split("_")[2].split(".")[0]))
+            
+            vlm_scores = []
+            gt_aligned_rewards = []
+            
+            total_frames = len(gt_rewards)
+            
+            for entry in frames_data_sorted:
+                frame_idx = int(entry["frame"].split("_")[2].split(".")[0])
+                vlm_scores.append(float(entry["score"]))
                 
-                gt_rewards = gt_metadata["rewards"]
-                
-                # 2. Align VLM rewards with GT rewards
-                vlm_scores = []
-                gt_aligned_rewards = []
-                
-                for entry in frames_data:
-                    frame_idx = int(entry["frame"].split("_")[1].split(".")[0])
-                    vlm_scores.append(float(entry["score"]))
-                    # MetaWorld rewards are per step, frames are rendered at each step
-                    gt_aligned_rewards.append(gt_rewards[frame_idx])
+                # Ground truth is temporal progress (t / T-1) mapped to 0-100%
+                gt_percentage = (frame_idx / (total_frames - 1)) * 100.0 if total_frames > 1 else 0.0
+                gt_aligned_rewards.append(gt_percentage)
 
-                if len(vlm_scores) < 2:
-                    continue
+            if len(vlm_scores) < 2:
+                continue
 
-                # 3. Compute Pearson Correlation
-                corr, _ = pearsonr(vlm_scores, gt_aligned_rewards)
-                if not np.isnan(corr):
-                    task_pearson.append(corr)
+            # 3. Compute Spearman Correlation with GT
+            corr, _ = spearmanr(vlm_scores, gt_aligned_rewards)
+            if not np.isnan(corr):
+                task_pearson.append(corr)
+                global_pearson.append(corr)
 
-                # 4. Compute Preference Alignment
-                # Sample random pairs to check if VLM and GT agree on which is better
-                correct_preferences = 0
-                total_pairs = 0
-                n = len(vlm_scores)
+            # 4. Compute VOC
+            # rank-correlation(argsort(v_tilde), arange(T))
+            voc, _ = spearmanr(np.argsort(vlm_scores), np.arange(len(vlm_scores)))
+            if not np.isnan(voc):
+                task_preference.append(voc)
+                global_preference.append(voc)
+            
+            # Save raw scores for this rollout
+            if "raw_scores" not in overall_metrics.setdefault(f"{task}_{step_type}", {}):
+                overall_metrics[f"{task}_{step_type}"]["raw_scores"] = []
                 
-                # Use all non-identical pairs for smaller datasets, or a subset for larger
-                for i in range(n):
-                    for j in range(i + 1, n):
-                        # Ground Truth Preference
-                        gt_diff = gt_aligned_rewards[i] - gt_aligned_rewards[j]
-                        # VLM Preference
-                        vlm_diff = vlm_scores[i] - vlm_scores[j]
-                        
-                        # Only count if GT has a clear preference (difference > 0)
-                        if abs(gt_diff) > 1e-5:
-                            total_pairs += 1
-                            if (gt_diff > 0 and vlm_diff > 0) or (gt_diff < 0 and vlm_diff < 0):
-                                correct_preferences += 1
-                
-                if total_pairs > 0:
-                    task_preference.append(correct_preferences / total_pairs)
+            overall_metrics[f"{task}_{step_type}"]["raw_scores"].append({
+                "rollout": rollout_id,
+                "spearman": float(corr) if not np.isnan(corr) else None,
+                "voc": float(voc) if not np.isnan(voc) else None
+            })
 
         # Average metrics for this task/step combination
         if task_pearson:
             metric_key = f"{task}_{step_type}"
-            overall_metrics[metric_key] = {
-                "avg_pearson": float(np.mean(task_pearson)),
-                "avg_preference_alignment": float(np.mean(task_preference)) if task_preference else 0.0,
+            overall_metrics[metric_key].update({
+                "avg_spearman": float(np.mean(task_pearson)),
+                "avg_voc": float(np.mean(task_preference)) if task_preference else 0.0,
+                "median_spearman": float(np.median(task_pearson)),
+                "median_voc": float(np.median(task_preference)) if task_preference else 0.0,
                 "num_rollouts": len(task_pearson)
-            }
+            })
+
+    # Add global metrics to overall_metrics
+    if global_pearson:
+        overall_metrics["global_metrics"] = {
+            "avg_spearman": float(np.mean(global_pearson)),
+            "avg_voc": float(np.mean(global_preference)) if global_preference else 0.0,
+            "median_spearman": float(np.median(global_pearson)),
+            "median_voc": float(np.median(global_preference)) if global_preference else 0.0,
+            "num_rollouts": len(global_pearson)
+        }
 
     # Print and Save results
     print("\nReward Model Metrics Alignment:")
-    print("-" * 60)
-    print(f"{'Task & Step':<40} | {'Pearson':<8} | {'Pref Acc':<8}")
-    print("-" * 60)
+    print("-" * 85)
+    print(f"{'Task & Step':<30} | {'Avg Spear.':<10} | {'Med Spear.':<10} | {'Avg VOC':<10} | {'Med VOC':<10}")
+    print("-" * 85)
     for key, m in overall_metrics.items():
-        print(f"{key:<40} | {m['avg_pearson']:<8.3f} | {m['avg_preference_alignment']:<8.3f}")
+        if key != "global_metrics" and "avg_spearman" in m:
+            print(f"{key:<30} | {m['avg_spearman']:<10.3f} | {m['median_spearman']:<10.3f} | {m['avg_voc']:<10.3f} | {m['median_voc']:<10.3f}")
+            
+    if "global_metrics" in overall_metrics:
+        print("-" * 85)
+        m = overall_metrics["global_metrics"]
+        print(f"{'GLOBAL (ALL TASKS)':<30} | {m['avg_spearman']:<10.3f} | {m['median_spearman']:<10.3f} | {m['avg_voc']:<10.3f} | {m['median_voc']:<10.3f}")
 
     output_file = os.path.join(rewards_path, "metrics.json")
     with open(output_file, "w") as f:

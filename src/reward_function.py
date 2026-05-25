@@ -13,25 +13,25 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-async def get_reward_score(session, frame1_path, frame2_path, prompt):
+async def get_reward_score(session, prompt, image_paths):
     """
-    Computes a reward score for two frames based on the task description asynchronously.
+    Computes a reward score based on a sequence of images and a prompt.
     """
     
+    content = [{"type": "text", "text": prompt}]
+    for img_path in image_paths:
+        content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encode_image(img_path)}"}})
+
     payload = {
         "model": MODEL_NAME,
         "messages": [
             {
                 "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encode_image(frame1_path)}"}},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encode_image(frame2_path)}"}}
-                ],
+                "content": content,
             }
         ],
         "temperature": 0.0,
-        "max_tokens": 100,
+        "max_tokens": 2000,
     }
     
     try:
@@ -39,32 +39,29 @@ async def get_reward_score(session, frame1_path, frame2_path, prompt):
             response.raise_for_status()
             response_data = await response.json()
             content = response_data['choices'][0]['message']['content'].strip()
-            # Extract score by finding the last number in the content
+            
+            # Extract scores for each frame
             import re
-            scores = re.findall(r"[-+]?\d*\.\d+|\d+", content)
-            score = float(scores[-1])
-        
-            return content, score
+            
+            scores_dict = {}
+            # Look for Frame X: ... <score>Y%</score>
+            # We can just find all instances of <score>Y%</score> or similar.
+            # However, since they are associated with Frame X, let's find the frame indices and scores.
+            frame_blocks = re.findall(r"Frame\s+(\d+):.*?(?:<score>|Score:)\s*(\d+(?:\.\d+)?)\s*%?\s*(?:</score>)?", content, re.IGNORECASE | re.DOTALL)
+            
+            if frame_blocks:
+                for idx_str, score_str in frame_blocks:
+                    scores_dict[int(idx_str)] = float(score_str)
+            else:
+                # Fallback: just find all <score>...</score>
+                raw_scores = re.findall(r"<score>\s*(\d+(?:\.\d+)?)\s*%?\s*</score>", content, re.IGNORECASE)
+                for i, score_str in enumerate(raw_scores):
+                    scores_dict[i] = float(score_str)
+            
+            return content, scores_dict
     except Exception as e:
         print(f"Error calling VLM API: {e}")
         return None, None
 
-async def main():
-    # Example usage:
-    frame1 = "/home/leonardo/Projects/VLM-as-Reward-Models-for-RL/data/metaworld/corner2/door-open-v3/expert/rollout_0/frame_000.jpg"
-    frame2 = "/home/leonardo/Projects/VLM-as-Reward-Models-for-RL/data/metaworld/corner2/door-open-v3/expert/rollout_0/frame_020.jpg"
-    task_description = "Reach the door handle and open the door completely."
-    prompt = (
-        f"Task: {task_description}\n"
-        "You are a reward model for RL training that evaluates the progress towards the task goal based on two images. "
-        "You are given two frames: the first frame is the initial state used as reference to identify the task objective and the second frame is the current state. "
-        "Describe the robot's progress toward the goal, then provide the reward as a single number from 0.0 to 10.0 representing the reward score for the current state. 10.0 means the task is fully completed, while 0.0 means no progress has been made. "
-    )
-    
-    async with aiohttp.ClientSession() as session:
-        content, score = await get_reward_score(session, frame1, frame2, prompt)
-        print(f"Reward Score: {score}")
-        print(f"Explanation: {content}")
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    pass

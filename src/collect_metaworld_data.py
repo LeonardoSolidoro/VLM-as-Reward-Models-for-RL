@@ -7,10 +7,7 @@ import metaworld
 import yaml
 from pathlib import Path
 from metaworld import policies
-
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
+from utilities import set_all_seeds
 
 # Load configuration
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "configs", "configs.yaml")
@@ -126,9 +123,8 @@ def save_rollout(frames, rewards, successes, base_path):
     print(f"Saved rollout to {base_path}")
 
 def main():
-    # Set seed for reproducibility
     seed = config.get("seed")
-    set_seed(seed)
+    set_all_seeds(seed)
     
     tasks = list(POLICY_MAP.keys())
     levels = config.get("levels")

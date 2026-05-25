@@ -1,18 +1,19 @@
 # OpenCode Instructions
 
 ## Overview
-This repository automates reward computation for Metaworld tasks using Visual Language Models (VLMs).
+Automates reward computation for Metaworld tasks using Visual Language Models (VLMs). The core workload is multi-view, frame-subsampled reward estimation.
 
 ## Key Configuration
-- **`configs/configs.yaml`**: The single source of truth for task descriptions, camera views, and sampling logic (step sizes, interval).
+- **`configs/configs.yaml`**: Source of truth for task descriptions, experiment views (`experiment_views`), context framing (`frames_in_context`), and prompt templates.
 
 ## Execution
 - **Reward Collection**: Run `python src/collect_rewards.py`.
-  - This reads from `data/metaworld` and writes to `output/metaworld_rewards`.
-  - The script uses `aiohttp` to run multiple VLM queries in parallel (via `asyncio`).
-- **Metrics**: Use `src/compute_metrics.py` to analyze the collected rewards.
+  - Input: `data/metaworld/`.
+  - Output: `output/metaworld_rewards/<experiment_name>/<task>_<level>_rewards.json`.
+  - Script uses `aiohttp` for parallel async VLM queries.
+- **Metrics**: Use `src/compute_metrics.py` to analyze results.
 
-## Structure & Gotchas
-- **Data Directory**: Expects `data/metaworld/<task>/<level>/<rollout>/*.jpg`.
-- **Camera Views**: The `camera_names` list in `configs.yaml` is critical. If a requested camera view is missing from a rollout, the collection will fail.
-- **Dependencies**: `requirements.txt` includes `aiohttp` and `opencv-python`. Ensure environment has these.
+## Critical Structure & Gotchas
+- **Data Layout**: `data/metaworld/<task>/<level>/<rollout>/<view>_frame_<index>.jpg`.
+- **Experiment Views**: `experiment_views` in `configs.yaml` MUST match the naming convention in the data directory (e.g., 'topview', 'corner'). If a view is missing, collection may fail or produce incomplete data.
+- **Prompting**: The pipeline expects multi-view inputs mapped to `[IMG]` placeholders. When modifying prompts, ensure the number of images passed to `get_reward_score` matches the placeholders in the template.
