@@ -18,9 +18,21 @@ async def get_reward_score(session, prompt, image_paths):
     Computes a reward score based on a sequence of images and a prompt.
     """
     
-    content = [{"type": "text", "text": prompt}]
-    for img_path in image_paths:
+    content = []
+    # Split the prompt by the exact placeholder used in configs.yaml
+    text_chunks = prompt.split("[IMG]")
+    
+    # Interleave text chunks and image objects
+    for i, img_path in enumerate(image_paths):
+        if text_chunks[i]:  # Add the text before the image
+            content.append({"type": "text", "text": text_chunks[i]})
+        
+        # Add the image exactly where the placeholder was
         content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encode_image(img_path)}"}})
+        
+    # Add any remaining text after the last image
+    if len(text_chunks) > len(image_paths) and text_chunks[-1]:
+        content.append({"type": "text", "text": text_chunks[-1]})
 
     payload = {
         "model": MODEL_NAME,

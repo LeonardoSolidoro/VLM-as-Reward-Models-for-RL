@@ -112,7 +112,14 @@ async def process_rollout(session, task, level, rollout, rollout_path, prompt_te
                         "frame": f"{view}_frame_{original_idx:03d}.jpg",
                         "score": score
                     })
+                else:
+                    print(f"Error: Frame {view}_frame_{original_idx:03d}.jpg (prompt index {i+1}) was dropped for {task} | {rollout} due to missing score in VLM output!")
             
+            
+            print(f"\n--- DEBUG: Raw VLM Output for {task} | {rollout} ---")
+            print(explanation)
+            print("---------------------------------------------------\n")
+
             combined_results[level][rollout] = results_list
             return
         await asyncio.sleep(1)
@@ -162,6 +169,11 @@ async def run_pipeline():
                 rollouts = [d for d in os.listdir(level_path) if os.path.isdir(os.path.join(level_path, d))]
                 
                 for rollout in rollouts:
+                    # Skip rollout_0 if we are using it for in-context examples
+                    if rollout == "rollout_0" and experiment_in_context_examples > 0:
+                        print(f"Skipping {task} | {level} | {rollout} (used as in-context example)")
+                        continue
+                        
                     rollout_path = os.path.join(level_path, rollout)
                     combined_results[level][rollout] = None
                     

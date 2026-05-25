@@ -12,7 +12,7 @@ This repository reproduces and extends the concepts from the paper *Vision Langu
 
 ### Prerequisites
 1. A conda environment (`VLM_RM`) containing Python and necessary packages (e.g., `aiohttp`, `pyyaml`, `scipy`, `numpy`).
-2. A running instance of a `vLLM` server serving a Vision-Language Model (e.g., `cyankiwi/Qwen3-VL-4B-Instruct-AWQ-4bit`).
+2. A running instance of a `vLLM` server serving a Vision-Language Model (e.g., `cyankiwi/Qwen3-VL-4B-Instruct-AWQ-4bit`) with at least 14000 max tokens.
 
 ### Configuration
 1. **`.env`**: Configure your environment variables to point to your vLLM server.

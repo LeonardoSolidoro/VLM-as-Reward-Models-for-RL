@@ -3,9 +3,18 @@ import json
 import shutil
 import random
 import numpy as np
+import yaml
+
+from utilities import set_all_seeds
+
+# Load configuration
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "configs", "configs.yaml")
+with open(CONFIG_PATH, "r") as f:
+    config = yaml.safe_load(f)
 
 def prepare_in_context_example():
-    data_root = os.path.join("data", "metaworld")
+    data_root = config.get("data_root", "data/metaworld")
+    frames_in_context = config.get("frames_in_context")
     if not os.path.exists(data_root):
         print(f"Error: {data_root} not found.")
         return
@@ -22,30 +31,29 @@ def prepare_in_context_example():
             
         os.makedirs(target_dir, exist_ok=True)
         
-        # Load rewards
+        # Load rewards to get the total number of frames
         rewards_path = os.path.join(source_dir, "rewards.json")
         with open(rewards_path, "r") as f:
             rewards = json.load(f)
             
-        # Map accumulated rewards to 0-100%
-        cum_rewards = np.cumsum(rewards)
-        max_reward = cum_rewards[-1]
+        num_frames = len(rewards)
         
-        if max_reward > 0:
-            percentages = (cum_rewards / max_reward) * 100.0
-        else:
-            percentages = np.zeros_like(cum_rewards)
-            
+        # Calculate percentages based on time step (t / T-1)
+        percentages = np.zeros(num_frames)
+        if num_frames > 1:
+            for t in range(num_frames):
+                percentages[t] = (t / (num_frames - 1)) * 100.0
+                
         percentages = np.clip(percentages, 0, 100).astype(int)
         
-        # We want to sample 30 frames.
+        # We want to sample `frames_in_context` frames.
         num_frames = len(rewards)
         # The frames are 0-indexed.
         all_indices = list(range(num_frames))
         
-        if len(all_indices) > 30:
-            # Keep first frame fixed, sample 29 from the rest
-            sampled_indices = [0] + sorted(random.sample(all_indices[1:], 29))
+        if len(all_indices) > frames_in_context:
+            # Keep first frame fixed, sample N-1 from the rest
+            sampled_indices = [0] + sorted(random.sample(all_indices[1:], frames_in_context - 1))
         else:
             sampled_indices = all_indices
             
@@ -90,7 +98,6 @@ def prepare_in_context_example():
         print(f"Prepared in-context example for {task} at {target_dir} with {len(in_context_data)} frames.")
 
 if __name__ == "__main__":
-    # Fix seed for reproducibility
-    random.seed(42)
-    np.random.seed(42)
+    set_all_seeds(config.get("seed"))
+
     prepare_in_context_example()
