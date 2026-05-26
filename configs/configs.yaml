@@ -46,16 +46,15 @@ reward_prompt_template: |
   percentage for the following frames that are presented in random
   order. For each frame, you must format your response exactly as follows, ending with a score enclosed in xml tags:
   Frame X:
-  Frame Description: <your description here>
   Task Completion Percentage: <score>XX%</score>
   
   Please provide your predictions for the following frames:
   {frames_list}
 
 # Experiment Settings
-experiment_name: "exp1.3.1"
+experiment_name: "exp1.1.nodesc"
 views: ["topview"]
-frames_in_context: 10
+frames_in_context: 20
 experiment_levels: ["expert"]
 experiment_shuffle_frames: true
 experiment_in_context_examples: 1

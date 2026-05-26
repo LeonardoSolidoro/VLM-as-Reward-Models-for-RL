@@ -49,13 +49,21 @@ def compute_metrics():
             for entry in frames_data_sorted:
                 vlm_scores.append(float(entry["score"]))
 
+            # Exclude the first frame from VOC computation since its score is hardcoded to 0.0 
+            # and was provided in the prompt, not predicted by the VLM.
+            vlm_scores = vlm_scores[1:]
+
             if len(vlm_scores) < 2:
                 continue
 
             # Compute VOC
-            # rank-correlation(argsort(v_tilde), arange(T))
-            voc, _ = spearmanr(np.argsort(vlm_scores), np.arange(len(vlm_scores)))
-            
+            # spearmanr internally converts values to ranks and handles ties correctly.
+            # If the VLM predicts a perfectly flat line (e.g. all 100%), spearmanr is mathematically undefined (NaN).
+            # We explicitly catch this and assign 0.0 because there is no temporal correlation.
+            if len(set(vlm_scores)) == 1:
+                voc = 0.0
+            else:
+                voc, _ = spearmanr(vlm_scores, np.arange(len(vlm_scores)))
             task_preference.append(voc)
             global_preference.append(voc)
             
