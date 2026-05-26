@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 VLLM_API_URL = os.getenv("VLLM_API_URL")
+VLLM_API_KEY = os.getenv("VLLM_API_KEY", "EMPTY")
 MODEL_NAME = os.getenv("MODEL_NAME")
 
 def encode_image(image_path):
@@ -23,9 +24,6 @@ async def get_reward_score(session, prompt, image_paths):
     
     num_tags = len(text_chunks) - 1
     num_imgs = len(image_paths)
-    print(f"\n--- DEBUG: Image Mapping Validation ---")
-    print(f"Found {num_tags} '[IMG]' placeholders in the text.")
-    print(f"Provided {num_imgs} image paths.")
     if num_tags != num_imgs:
         print(f"CRITICAL ERROR: Number of text placeholders DOES NOT MATCH number of images!")
     print("---------------------------------------\n")
@@ -55,8 +53,13 @@ async def get_reward_score(session, prompt, image_paths):
         "max_tokens": 2000,
     }
     
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {VLLM_API_KEY}"
+    }
+
     try:
-        async with session.post(VLLM_API_URL, json=payload) as response:
+        async with session.post(VLLM_API_URL, headers=headers, json=payload) as response:
             response.raise_for_status()
             response_data = await response.json()
             content = response_data['choices'][0]['message']['content'].strip()

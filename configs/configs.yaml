@@ -52,9 +52,9 @@ reward_prompt_template: |
   {frames_list}
 
 # Experiment Settings
-experiment_name: "exp1.3.2.nodesc-10rollouts"
+experiment_name: "exp1.1.nodesc-10rollouts-gemini3.1-flash-lite"
 views: ["topview"]
-frames_in_context: 5
+frames_in_context: 20
 experiment_levels: ["expert"]
 experiment_shuffle_frames: true
 experiment_in_context_examples: 1

@@ -127,7 +127,7 @@ async def process_rollout(session, semaphore, task, level, rollout, rollout_path
             combined_results[level][rollout] = results_list
             return
         print(f"Attempt {attempt + 1} failed for {task} | {rollout}. Retrying...")
-        await asyncio.sleep(1)
+        await asyncio.sleep(30)
 
     print(f"Failed to get reward for {task} | {rollout} after {max_retries} attempts.")
 
