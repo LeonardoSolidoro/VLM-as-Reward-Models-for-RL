@@ -114,5 +114,42 @@ def compute_metrics():
         json.dump(overall_metrics, f, indent=4)
     print(f"\nSaved detailed metrics to {output_file}")
 
+    # --- Plotting the Histogram ---
+    import matplotlib.pyplot as plt
+
+    task_vocs = {}
+    for key, m in overall_metrics.items():
+        if key == "global_metrics": continue
+        raw = m.get("raw_scores", [])
+        vocs = [r["voc"] for r in raw if r["voc"] is not None]
+        if vocs:
+            task_vocs[key] = vocs
+
+    if task_vocs:
+        bins = np.arange(-1.0, 1.1, 0.1)
+        plt.figure(figsize=(10, 6))
+        
+        labels = list(task_vocs.keys())
+        data = [task_vocs[label] for label in labels]
+        
+        plt.hist(data, bins=bins, stacked=True, label=labels, edgecolor='black', alpha=0.8)
+        
+        global_avg = overall_metrics["global_metrics"]["avg_voc"]
+        global_med = overall_metrics["global_metrics"]["median_voc"]
+        
+        plt.axvline(global_avg, color='red', linestyle='dashed', linewidth=2, label=f'Global Mean ({global_avg:.2f})')
+        plt.axvline(global_med, color='blue', linestyle='dotted', linewidth=2, label=f'Global Median ({global_med:.2f})')
+        
+        plt.xlim(-1.0, 1.0)
+        plt.xlabel('Value-Order Correlation (VOC)')
+        plt.ylabel('Frequency')
+        plt.title(f'VOC Distribution Across All Tasks ({experiment_name})')
+        plt.legend()
+        
+        plot_path = os.path.join(rewards_path, "voc_histogram.png")
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"Saved VOC histogram plot to {plot_path}")
+
 if __name__ == "__main__":
     compute_metrics()
