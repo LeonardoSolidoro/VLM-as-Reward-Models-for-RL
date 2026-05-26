@@ -26,7 +26,6 @@ async def get_reward_score(session, prompt, image_paths):
     num_imgs = len(image_paths)
     if num_tags != num_imgs:
         print(f"CRITICAL ERROR: Number of text placeholders DOES NOT MATCH number of images!")
-    print("---------------------------------------\n")
     
     content = []
     # Interleave text chunks and image objects

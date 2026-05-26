@@ -120,9 +120,9 @@ async def process_rollout(session, semaphore, task, level, rollout, rollout_path
                     print(f"Error: Frame {view}_frame_{original_idx:03d}.jpg (prompt index {i+1}) was dropped for {task} | {rollout} due to missing score in VLM output!")
             
             
-            print(f"\n--- DEBUG: Raw VLM Output for {task} | {rollout} ---")
-            print(explanation)
-            print("---------------------------------------------------\n")
+            #print(f"\n--- DEBUG: Raw VLM Output for {task} | {rollout} ---")
+            #print(explanation)
+            #print("---------------------------------------------------\n")
 
             combined_results[level][rollout] = results_list
             return
