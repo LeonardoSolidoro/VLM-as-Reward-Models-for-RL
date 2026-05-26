@@ -1,6 +1,6 @@
 # Data Path Settings
-data_root: "data/metaworld"
-output_root: "output/metaworld_rewards"
+data_root: "data/maniskill3"
+output_root: "output/maniskill3_rewards"
 seed: 42
 
 # Collection Settings
@@ -25,6 +25,12 @@ tasks:
   pick-place-v3:
     description: "Control the Sawyer robot arm to grasp the small puck/block on the table, lift it up, and place it precisely onto the target goal location."
     policy: "SawyerPickPlaceV3Policy"
+  PegInsertionSide-v1:
+    description: "Pick up the peg and insert it into the side hole."
+  PickCube-v1:
+    description: "Grasp the red cube and move it to the green target goal position."
+  PushCube-v1:
+    description: "Push the cube to the red-and-white circular goal region in front of it."
 
 # Prompt Template
 reward_prompt_template: |
@@ -52,9 +58,9 @@ reward_prompt_template: |
   {frames_list}
 
 # Experiment Settings
-experiment_name: "exp1.3.2.nodesc-10rollouts-gemini3.1-flash-lite"
+experiment_name: "exp1.3.1.maniskill3-gemini3.1-flash-lite"
 views: ["topview"]
-frames_in_context: 5
+frames_in_context: 6
 experiment_levels: ["expert"]
 experiment_shuffle_frames: true
 experiment_in_context_examples: 1

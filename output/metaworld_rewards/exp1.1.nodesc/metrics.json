@@ -94,6 +94,7 @@
     "global_metrics": {
         "avg_voc": 0.21244620824755933,
         "median_voc": 0.21140350877192982,
+        "std_voc": 0.29854573682238056,
         "num_rollouts": 16
     }
 }

@@ -62,6 +62,8 @@ async def get_reward_score(session, prompt, image_paths):
             response.raise_for_status()
             response_data = await response.json()
             content = response_data['choices'][0]['message']['content'].strip()
+
+            #print(f"Received response from VLM API:\n{content}\n")
             
             # Extract scores for each frame
             import re
@@ -76,11 +78,16 @@ async def get_reward_score(session, prompt, image_paths):
                 for idx_str, score_str in frame_blocks:
                     scores_dict[int(idx_str)] = float(score_str)
             else:
+                print("Warning: No frame-specific scores found in the response. Attempting fallback parsing.")
                 # Fallback: just find all <score>...</score>
                 raw_scores = re.findall(r"<score>\s*(\d+(?:\.\d+)?)\s*%?\s*</score>", content, re.IGNORECASE)
-                for i, score_str in enumerate(raw_scores):
-                    scores_dict[i] = float(score_str)
-            
+
+                if raw_scores:
+                    for i, score_str in enumerate(raw_scores):
+                        scores_dict[i] = float(score_str)
+                else:
+                    print("Warning: No scores found in the response at all.")
+                    
             return content, scores_dict
     except Exception as e:
         print(f"Error calling VLM API: {e}")

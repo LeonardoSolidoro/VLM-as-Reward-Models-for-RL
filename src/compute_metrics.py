@@ -92,6 +92,7 @@ def compute_metrics():
         overall_metrics["global_metrics"] = {
             "avg_voc": float(np.mean(global_preference)),
             "median_voc": float(np.median(global_preference)),
+            "std_voc": float(np.std(global_preference)),
             "num_rollouts": len(global_preference)
         }
 
@@ -132,10 +133,12 @@ def compute_metrics():
         labels = list(task_vocs.keys())
         data = [task_vocs[label] for label in labels]
         
-        plt.hist(data, bins=bins, stacked=True, label=labels, edgecolor='black', alpha=0.8)
+        flat_data = [voc for sublist in data for voc in sublist]
+        plt.hist(flat_data, bins=bins, color='#5DADE2', edgecolor='black', alpha=0.5, label='All Tasks')
         
         global_avg = overall_metrics["global_metrics"]["avg_voc"]
         global_med = overall_metrics["global_metrics"]["median_voc"]
+        global_std = overall_metrics["global_metrics"].get("std_voc", 0.0)
         
         plt.axvline(global_avg, color='red', linestyle='dashed', linewidth=2, label=f'Global Mean ({global_avg:.2f})')
         plt.axvline(global_med, color='blue', linestyle='dotted', linewidth=2, label=f'Global Median ({global_med:.2f})')
@@ -150,6 +153,37 @@ def compute_metrics():
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
         plt.close()
         print(f"Saved VOC histogram plot to {plot_path}")
+
+        # New plot: Bar chart
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+        fig.suptitle(f'GVL Aggregate Performance ({experiment_name})', fontsize=16)
+
+        bar_width = 0.5
+        
+        # Mean Plot
+        ax1.bar(["Current Setup"], [global_avg], yerr=[global_std], capsize=10, color='#F47A38', width=bar_width)
+        ax1.set_title("Mean VOC", fontsize=14)
+        ax1.set_ylabel("Value-Order Correlation", fontsize=12)
+        ax1.set_ylim(0, max(1.0, global_avg + global_std + 0.1))
+        ax1.grid(axis='y', linestyle='-', alpha=0.3)
+        ax1.spines['top'].set_visible(False)
+        ax1.spines['right'].set_visible(False)
+        ax1.text(0, global_avg + global_std + 0.02, f'{global_avg:.2f}', ha='center', va='bottom', fontsize=12)
+
+        # Median Plot
+        ax2.bar(["Current Setup"], [global_med], yerr=[global_std], capsize=10, color='#F47A38', width=bar_width)
+        ax2.set_title("Median VOC", fontsize=14)
+        ax2.set_ylim(0, max(1.0, global_med + global_std + 0.1))
+        ax2.grid(axis='y', linestyle='-', alpha=0.3)
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
+        ax2.text(0, global_med + global_std + 0.02, f'{global_med:.2f}', ha='center', va='bottom', fontsize=12)
+
+        plt.tight_layout()
+        bar_plot_path = os.path.join(rewards_path, "voc_aggregate_bars.png")
+        plt.savefig(bar_plot_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"Saved VOC bar chart plot to {bar_plot_path}")
 
 if __name__ == "__main__":
     compute_metrics()

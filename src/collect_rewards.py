@@ -41,8 +41,7 @@ def load_in_context_example(task, view):
     return ic_str, ic_images
 
 async def process_rollout(session, semaphore, task, level, rollout, rollout_path, prompt_template, views, frames_in_context, ic_str, ic_images, combined_results, experiment_shuffle_frames):
-    async with semaphore:
-        print(f"Processing {task} | {level} | {rollout}...")
+    print(f"Processing {task} | {level} | {rollout}...")
     
     view = views[0] if views else "topview"
     
@@ -100,8 +99,13 @@ async def process_rollout(session, semaphore, task, level, rollout, rollout_path
     
     max_retries = 3
     for attempt in range(max_retries):
-        explanation, scores_dict = await get_reward_score(session, prompt, image_paths)
+        async with semaphore:
+            explanation, scores_dict = await get_reward_score(session, prompt, image_paths)
         if explanation is not None and scores_dict is not None:
+            if len(scores_dict) != len(sampled_others):
+                print(f"Warning: Number of scores extracted ({len(scores_dict)}) does not match number of predicted frames ({len(sampled_others)}).")
+                print(f"Scores dict keys: {scores_dict.keys()}")
+                print(f"Expected frame indices for scores: {list(range(1, len(sampled_others) + 1))}")
             # The first frame is explicitly 0% as per the prompt
             results_list = [{
                 "frame": f"{view}_frame_{first_frame:03d}.jpg",
@@ -127,7 +131,7 @@ async def process_rollout(session, semaphore, task, level, rollout, rollout_path
             combined_results[level][rollout] = results_list
             return
         print(f"Attempt {attempt + 1} failed for {task} | {rollout}. Retrying...")
-        await asyncio.sleep(30)
+        await asyncio.sleep(60)
 
     print(f"Failed to get reward for {task} | {rollout} after {max_retries} attempts.")
 
@@ -152,8 +156,8 @@ async def run_pipeline():
         
     tasks_to_process = [d for d in os.listdir(data_root) if os.path.isdir(os.path.join(data_root, d)) and d != "in-context-example"]
     
-    # Limit to 1 concurrent API request to prevent overwhelming the VLM server
-    semaphore = asyncio.Semaphore(1)
+    # Limit to 2 concurrent API request to prevent overwhelming the VLM server
+    semaphore = asyncio.Semaphore(3)
     
     # Disable default 5-minute timeout for massive generation requests
     timeout = aiohttp.ClientTimeout(total=None)
