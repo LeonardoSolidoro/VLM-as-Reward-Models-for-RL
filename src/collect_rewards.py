@@ -152,8 +152,8 @@ async def run_pipeline():
         
     tasks_to_process = [d for d in os.listdir(data_root) if os.path.isdir(os.path.join(data_root, d)) and d != "in-context-example"]
     
-    # Limit to 2 concurrent API requests to prevent overwhelming the VLM server
-    semaphore = asyncio.Semaphore(2)
+    # Limit to 1 concurrent API request to prevent overwhelming the VLM server
+    semaphore = asyncio.Semaphore(1)
     
     # Disable default 5-minute timeout for massive generation requests
     timeout = aiohttp.ClientTimeout(total=None)
