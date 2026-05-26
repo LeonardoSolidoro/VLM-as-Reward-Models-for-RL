@@ -40,8 +40,9 @@ def load_in_context_example(task, view):
             
     return ic_str, ic_images
 
-async def process_rollout(session, task, level, rollout, rollout_path, prompt_template, views, frames_in_context, ic_str, ic_images, combined_results, experiment_shuffle_frames):
-    print(f"Processing {task} | {level} | {rollout}...")
+async def process_rollout(session, semaphore, task, level, rollout, rollout_path, prompt_template, views, frames_in_context, ic_str, ic_images, combined_results, experiment_shuffle_frames):
+    async with semaphore:
+        print(f"Processing {task} | {level} | {rollout}...")
     
     view = views[0] if views else "topview"
     
@@ -61,15 +62,18 @@ async def process_rollout(session, task, level, rollout, rollout_path, prompt_te
         
     sorted_indices = sorted(list(frame_indices))
     
-    # Guarantee the first frame is always index 0
+    # Guarantee the first and last frames are always included
     first_frame = sorted_indices[0]
-    other_frames = sorted_indices[1:]
+    last_frame = sorted_indices[-1]
     
-    # Subsample remaining frames
-    if len(other_frames) > frames_in_context - 1:
-        sampled_others = random.sample(other_frames, frames_in_context - 1)
+    middle_frames = sorted_indices[1:-1]
+    
+    # Subsample remaining frames from the middle
+    if len(middle_frames) > frames_in_context - 2:
+        sampled_others = random.sample(middle_frames, frames_in_context - 2)
+        sampled_others.append(last_frame)
     else:
-        sampled_others = other_frames
+        sampled_others = middle_frames + [last_frame]
 
     # Shuffle the remaining frames conditionally
     if experiment_shuffle_frames:
@@ -122,6 +126,7 @@ async def process_rollout(session, task, level, rollout, rollout_path, prompt_te
 
             combined_results[level][rollout] = results_list
             return
+        print(f"Attempt {attempt + 1} failed for {task} | {rollout}. Retrying...")
         await asyncio.sleep(1)
 
     print(f"Failed to get reward for {task} | {rollout} after {max_retries} attempts.")
@@ -147,7 +152,12 @@ async def run_pipeline():
         
     tasks_to_process = [d for d in os.listdir(data_root) if os.path.isdir(os.path.join(data_root, d)) and d != "in-context-example"]
     
-    async with aiohttp.ClientSession() as session:
+    # Limit to 2 concurrent API requests to prevent overwhelming the VLM server
+    semaphore = asyncio.Semaphore(2)
+    
+    # Disable default 5-minute timeout for massive generation requests
+    timeout = aiohttp.ClientTimeout(total=None)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
         for task in tasks_to_process:
             if experiment_in_context_examples > 0:
                 ic_str, ic_images = load_in_context_example(task, view)
@@ -178,7 +188,7 @@ async def run_pipeline():
                     combined_results[level][rollout] = None
                     
                     rollout_tasks.append(process_rollout(
-                        session, task, level, rollout, rollout_path, prompt_template,
+                        session, semaphore, task, level, rollout, rollout_path, prompt_template,
                         views, frames_in_context, ic_str, ic_images, combined_results,
                         experiment_shuffle_frames
                     ))

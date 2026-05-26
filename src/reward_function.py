@@ -18,10 +18,19 @@ async def get_reward_score(session, prompt, image_paths):
     Computes a reward score based on a sequence of images and a prompt.
     """
     
-    content = []
     # Split the prompt by the exact placeholder used in configs.yaml
     text_chunks = prompt.split("[IMG]")
     
+    num_tags = len(text_chunks) - 1
+    num_imgs = len(image_paths)
+    print(f"\n--- DEBUG: Image Mapping Validation ---")
+    print(f"Found {num_tags} '[IMG]' placeholders in the text.")
+    print(f"Provided {num_imgs} image paths.")
+    if num_tags != num_imgs:
+        print(f"CRITICAL ERROR: Number of text placeholders DOES NOT MATCH number of images!")
+    print("---------------------------------------\n")
+    
+    content = []
     # Interleave text chunks and image objects
     for i, img_path in enumerate(image_paths):
         if text_chunks[i]:  # Add the text before the image

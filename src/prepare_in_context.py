@@ -52,8 +52,13 @@ def prepare_in_context_example():
         all_indices = list(range(num_frames))
         
         if len(all_indices) > frames_in_context:
-            # Keep first frame fixed, sample N-1 from the rest
-            sampled_indices = [0] + sorted(random.sample(all_indices[1:], frames_in_context - 1))
+            first_frame = all_indices[0]
+            last_frame = all_indices[-1]
+            middle_frames = all_indices[1:-1]
+            
+            # Keep first and last frame fixed, sample N-2 from the middle
+            sampled_middle = random.sample(middle_frames, frames_in_context - 2)
+            sampled_indices = [first_frame] + sorted(sampled_middle + [last_frame])
         else:
             sampled_indices = all_indices
             

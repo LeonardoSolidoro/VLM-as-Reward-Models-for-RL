@@ -53,9 +53,9 @@ reward_prompt_template: |
   {frames_list}
 
 # Experiment Settings
-experiment_name: "exp1.1"
+experiment_name: "exp1.3.1"
 views: ["topview"]
-frames_in_context: 20
+frames_in_context: 10
 experiment_levels: ["expert"]
 experiment_shuffle_frames: true
 experiment_in_context_examples: 1

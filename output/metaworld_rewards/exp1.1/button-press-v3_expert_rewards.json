@@ -9,39 +9,15 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_049.jpg",
-                "score": 15.0
-            },
-            {
-                "frame": "topview_frame_016.jpg",
-                "score": 20.0
-            },
-            {
-                "frame": "topview_frame_002.jpg",
-                "score": 50.0
-            },
-            {
-                "frame": "topview_frame_024.jpg",
-                "score": 55.0
-            },
-            {
-                "frame": "topview_frame_011.jpg",
-                "score": 70.0
-            },
-            {
-                "frame": "topview_frame_001.jpg",
-                "score": 85.0
-            },
-            {
-                "frame": "topview_frame_004.jpg",
-                "score": 90.0
-            },
-            {
-                "frame": "topview_frame_050.jpg",
+                "frame": "topview_frame_055.jpg",
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_039.jpg",
+                "frame": "topview_frame_010.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_012.jpg",
                 "score": 100.0
             },
             {
@@ -49,31 +25,43 @@
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_044.jpg",
+                "frame": "topview_frame_057.jpg",
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_006.jpg",
+                "frame": "topview_frame_011.jpg",
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_032.jpg",
+                "frame": "topview_frame_039.jpg",
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_021.jpg",
+                "frame": "topview_frame_049.jpg",
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_008.jpg",
+                "frame": "topview_frame_061.jpg",
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_037.jpg",
+                "frame": "topview_frame_001.jpg",
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_034.jpg",
+                "frame": "topview_frame_051.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_007.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_024.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_041.jpg",
                 "score": 100.0
             },
             {
@@ -81,7 +69,19 @@
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_048.jpg",
+                "frame": "topview_frame_060.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_033.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_034.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_013.jpg",
                 "score": 100.0
             }
         ],
@@ -91,51 +91,67 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_002.jpg",
-                "score": 0.0
-            },
-            {
                 "frame": "topview_frame_047.jpg",
-                "score": 15.0
+                "score": 10.0
             },
             {
-                "frame": "topview_frame_029.jpg",
+                "frame": "topview_frame_039.jpg",
+                "score": 25.0
+            },
+            {
+                "frame": "topview_frame_031.jpg",
                 "score": 30.0
             },
             {
-                "frame": "topview_frame_049.jpg",
-                "score": 60.0
+                "frame": "topview_frame_034.jpg",
+                "score": 45.0
             },
             {
-                "frame": "topview_frame_015.jpg",
-                "score": 80.0
+                "frame": "topview_frame_035.jpg",
+                "score": 55.0
+            },
+            {
+                "frame": "topview_frame_045.jpg",
+                "score": 70.0
+            },
+            {
+                "frame": "topview_frame_011.jpg",
+                "score": 85.0
+            },
+            {
+                "frame": "topview_frame_013.jpg",
+                "score": 90.0
+            },
+            {
+                "frame": "topview_frame_028.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_014.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_009.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_017.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_043.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_024.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_026.jpg",
+                "score": 100.0
             },
             {
                 "frame": "topview_frame_036.jpg",
-                "score": 100.0
-            },
-            {
-                "frame": "topview_frame_016.jpg",
-                "score": 100.0
-            },
-            {
-                "frame": "topview_frame_041.jpg",
-                "score": 100.0
-            },
-            {
-                "frame": "topview_frame_053.jpg",
-                "score": 100.0
-            },
-            {
-                "frame": "topview_frame_004.jpg",
-                "score": 100.0
-            },
-            {
-                "frame": "topview_frame_001.jpg",
-                "score": 100.0
-            },
-            {
-                "frame": "topview_frame_008.jpg",
                 "score": 100.0
             },
             {
@@ -143,27 +159,11 @@
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_022.jpg",
+                "frame": "topview_frame_042.jpg",
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_052.jpg",
-                "score": 100.0
-            },
-            {
-                "frame": "topview_frame_038.jpg",
-                "score": 100.0
-            },
-            {
-                "frame": "topview_frame_058.jpg",
-                "score": 100.0
-            },
-            {
-                "frame": "topview_frame_034.jpg",
-                "score": 100.0
-            },
-            {
-                "frame": "topview_frame_005.jpg",
+                "frame": "topview_frame_020.jpg",
                 "score": 100.0
             }
         ],
@@ -173,80 +173,80 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_026.jpg",
+                "frame": "topview_frame_058.jpg",
                 "score": 10.0
             },
             {
-                "frame": "topview_frame_061.jpg",
+                "frame": "topview_frame_046.jpg",
                 "score": 30.0
             },
             {
-                "frame": "topview_frame_044.jpg",
-                "score": 40.0
-            },
-            {
-                "frame": "topview_frame_043.jpg",
-                "score": 50.0
-            },
-            {
-                "frame": "topview_frame_042.jpg",
-                "score": 55.0
-            },
-            {
-                "frame": "topview_frame_052.jpg",
-                "score": 65.0
-            },
-            {
-                "frame": "topview_frame_027.jpg",
-                "score": 70.0
-            },
-            {
-                "frame": "topview_frame_004.jpg",
-                "score": 75.0
-            },
-            {
-                "frame": "topview_frame_059.jpg",
-                "score": 80.0
-            },
-            {
-                "frame": "topview_frame_047.jpg",
-                "score": 85.0
-            },
-            {
-                "frame": "topview_frame_048.jpg",
-                "score": 90.0
-            },
-            {
-                "frame": "topview_frame_013.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_058.jpg",
-                "score": 98.0
+                "frame": "topview_frame_003.jpg",
+                "score": 15.0
             },
             {
                 "frame": "topview_frame_056.jpg",
+                "score": 60.0
+            },
+            {
+                "frame": "topview_frame_015.jpg",
+                "score": 70.0
+            },
+            {
+                "frame": "topview_frame_014.jpg",
+                "score": 80.0
+            },
+            {
+                "frame": "topview_frame_016.jpg",
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_050.jpg",
+                "frame": "topview_frame_062.jpg",
+                "score": 20.0
+            },
+            {
+                "frame": "topview_frame_018.jpg",
+                "score": 50.0
+            },
+            {
+                "frame": "topview_frame_032.jpg",
+                "score": 65.0
+            },
+            {
+                "frame": "topview_frame_022.jpg",
+                "score": 75.0
+            },
+            {
+                "frame": "topview_frame_031.jpg",
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_028.jpg",
+                "frame": "topview_frame_043.jpg",
+                "score": 25.0
+            },
+            {
+                "frame": "topview_frame_009.jpg",
+                "score": 55.0
+            },
+            {
+                "frame": "topview_frame_005.jpg",
+                "score": 70.0
+            },
+            {
+                "frame": "topview_frame_060.jpg",
+                "score": 85.0
+            },
+            {
+                "frame": "topview_frame_035.jpg",
                 "score": 100.0
             },
             {
-                "frame": "topview_frame_023.jpg",
-                "score": 100.0
+                "frame": "topview_frame_037.jpg",
+                "score": 10.0
             },
             {
-                "frame": "topview_frame_007.jpg",
-                "score": 100.0
-            },
-            {
-                "frame": "topview_frame_030.jpg",
-                "score": 100.0
+                "frame": "topview_frame_033.jpg",
+                "score": 60.0
             }
         ],
         "rollout_4": [
@@ -255,80 +255,80 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_060.jpg",
-                "score": 15.0
+                "frame": "topview_frame_028.jpg",
+                "score": 10.0
             },
             {
-                "frame": "topview_frame_032.jpg",
-                "score": 30.0
-            },
-            {
-                "frame": "topview_frame_049.jpg",
-                "score": 55.0
-            },
-            {
-                "frame": "topview_frame_056.jpg",
-                "score": 75.0
-            },
-            {
-                "frame": "topview_frame_019.jpg",
-                "score": 85.0
-            },
-            {
-                "frame": "topview_frame_027.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_026.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_011.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_004.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_031.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_014.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_006.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_001.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_017.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_055.jpg",
-                "score": 95.0
+                "frame": "topview_frame_007.jpg",
+                "score": 25.0
             },
             {
                 "frame": "topview_frame_016.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_048.jpg",
-                "score": 95.0
+                "score": 35.0
             },
             {
                 "frame": "topview_frame_030.jpg",
+                "score": 40.0
+            },
+            {
+                "frame": "topview_frame_055.jpg",
+                "score": 50.0
+            },
+            {
+                "frame": "topview_frame_035.jpg",
+                "score": 55.0
+            },
+            {
+                "frame": "topview_frame_009.jpg",
+                "score": 60.0
+            },
+            {
+                "frame": "topview_frame_018.jpg",
+                "score": 65.0
+            },
+            {
+                "frame": "topview_frame_029.jpg",
+                "score": 70.0
+            },
+            {
+                "frame": "topview_frame_054.jpg",
+                "score": 75.0
+            },
+            {
+                "frame": "topview_frame_013.jpg",
+                "score": 80.0
+            },
+            {
+                "frame": "topview_frame_052.jpg",
+                "score": 85.0
+            },
+            {
+                "frame": "topview_frame_061.jpg",
+                "score": 90.0
+            },
+            {
+                "frame": "topview_frame_012.jpg",
                 "score": 95.0
             },
             {
-                "frame": "topview_frame_025.jpg",
+                "frame": "topview_frame_005.jpg",
+                "score": 98.0
+            },
+            {
+                "frame": "topview_frame_047.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_022.jpg",
                 "score": 95.0
+            },
+            {
+                "frame": "topview_frame_056.jpg",
+                "score": 90.0
+            },
+            {
+                "frame": "topview_frame_051.jpg",
+                "score": 85.0
             }
         ]
     }
