@@ -1,7 +1,9 @@
 import base64
 import asyncio
+import json
 import aiohttp
 import os
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -25,7 +27,7 @@ async def get_reward_score(session, prompt, image_paths):
     num_tags = len(text_chunks) - 1
     num_imgs = len(image_paths)
     if num_tags != num_imgs:
-        print(f"CRITICAL ERROR: Number of text placeholders DOES NOT MATCH number of images!")
+        print("CRITICAL ERROR: Number of text placeholders DOES NOT MATCH number of images!")
     
     content = []
     # Interleave text chunks and image objects
@@ -66,8 +68,6 @@ async def get_reward_score(session, prompt, image_paths):
             #print(f"Received response from VLM API:\n{content}\n")
             
             # Extract scores for each frame
-            import re
-            
             scores_dict = {}
             # Look for Frame X: ... <score>Y%</score>
             # We can just find all instances of <score>Y%</score> or similar.

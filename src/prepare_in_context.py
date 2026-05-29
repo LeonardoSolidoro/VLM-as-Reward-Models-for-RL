@@ -13,11 +13,17 @@ with open(CONFIG_PATH, "r") as f:
     config = yaml.safe_load(f)
 
 def prepare_in_context_example():
-    data_root = config.get("data_root", "data/metaworld")
+    data_root = config.get("data_root")
     frames_in_context = config.get("frames_in_context")
+    experiment_shuffle_frames = config.get("experiment_shuffle_frames")
     if not os.path.exists(data_root):
         print(f"Error: {data_root} not found.")
         return
+        
+    ic_dir = os.path.join(data_root, "in-context-example")
+    if os.path.exists(ic_dir):
+        print(f"Clearing existing in-context examples directory: {ic_dir}")
+        shutil.rmtree(ic_dir)
         
     tasks = [d for d in os.listdir(data_root) if os.path.isdir(os.path.join(data_root, d)) and d != "in-context-example"]
     
@@ -62,8 +68,8 @@ def prepare_in_context_example():
         else:
             sampled_indices = all_indices
             
-        # Shuffle all but the first frame
-        if len(sampled_indices) > 1:
+        # Shuffle all but the first frame conditionally
+        if len(sampled_indices) > 1 and experiment_shuffle_frames:
             rest = sampled_indices[1:]
             random.shuffle(rest)
             final_indices = [sampled_indices[0]] + rest

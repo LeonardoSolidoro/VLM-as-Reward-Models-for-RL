@@ -58,9 +58,9 @@ reward_prompt_template: |
   {frames_list}
 
 # Experiment Settings
-experiment_name: "exp1.3.1.maniskill3-gemini3.1-flash-lite"
+experiment_name: "exp1.1.maniskill3-qwen3-vl-8b-instruct"
 views: ["topview"]
-frames_in_context: 6
+frames_in_context: 20
 experiment_levels: ["expert"]
 experiment_shuffle_frames: true
 experiment_in_context_examples: 1

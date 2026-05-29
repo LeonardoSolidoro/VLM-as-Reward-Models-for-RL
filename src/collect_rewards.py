@@ -7,6 +7,7 @@ import aiohttp
 import random
 from reward_function import get_reward_score
 from utilities import set_all_seeds
+from prepare_in_context import prepare_in_context_example
 
 # Load configuration
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "configs", "configs.yaml")
@@ -20,8 +21,10 @@ set_all_seeds(seed)
 TASK_DESCRIPTIONS = {name: cfg["description"] for name, cfg in config["tasks"].items()}
 
 def load_in_context_example(task, view):
-    ic_path = os.path.join("data", "metaworld", "in-context-example", task, "in_context_data.json")
+    data_root = config.get("data_root")
+    ic_path = os.path.join(data_root, "in-context-example", task, "in_context_data.json")
     if not os.path.exists(ic_path):
+        print(f"Warning: In-context example file not found for task {task} at {ic_path}. Proceeding without in-context example.")
         return "", []
     with open(ic_path, "r") as f:
         ic_data = json.load(f)
@@ -35,16 +38,14 @@ def load_in_context_example(task, view):
         
         img_name = frame["images"].get(view)
         if img_name:
-            img_path = os.path.join("data", "metaworld", "in-context-example", task, img_name)
+            img_path = os.path.join(data_root, "in-context-example", task, img_name)
             ic_images.append(img_path)
             
     return ic_str, ic_images
 
-async def process_rollout(session, semaphore, task, level, rollout, rollout_path, prompt_template, views, frames_in_context, ic_str, ic_images, combined_results, experiment_shuffle_frames):
+async def process_rollout(session, semaphore, task, level, rollout, rollout_path, prompt_template, view, frames_in_context, ic_str, ic_images, combined_results, experiment_shuffle_frames):
     print(f"Processing {task} | {level} | {rollout}...")
-    
-    view = views[0] if views else "topview"
-    
+        
     # Get all frames for the specific view
     all_files = glob.glob(os.path.join(rollout_path, f"{view}_*.jpg"))
     frame_indices = set()
@@ -129,6 +130,7 @@ async def process_rollout(session, semaphore, task, level, rollout, rollout_path
             #print("---------------------------------------------------\n")
 
             combined_results[level][rollout] = results_list
+            print(f"Successfully processed {task} | {level} | {rollout} with {len(results_list)} frames scored.")
             return
         print(f"Attempt {attempt + 1} failed for {task} | {rollout}. Retrying...")
         await asyncio.sleep(60)
@@ -140,19 +142,21 @@ async def run_pipeline():
     output_root = config.get("output_root")
     os.makedirs(output_root, exist_ok=True)
 
-    experiment_name = config.get("experiment_name", "exp_default")
-    views = config.get("views", ["topview"])
-    frames_in_context = config.get("frames_in_context", 30)
+    experiment_name = config.get("experiment_name")
+    view = config.get("views")[0]
+    frames_in_context = config.get("frames_in_context")
     prompt_template = config["reward_prompt_template"]
-    experiment_levels = config.get("experiment_levels", None)
-    experiment_shuffle_frames = config.get("experiment_shuffle_frames", True)
-    experiment_in_context_examples = config.get("experiment_in_context_examples", 1)
-
-    view = views[0] if views else "topview"
+    experiment_levels = config.get("experiment_levels")
+    experiment_shuffle_frames = config.get("experiment_shuffle_frames")
+    experiment_in_context_examples = config.get("experiment_in_context_examples")
 
     if not os.path.exists(data_root):
         print(f"Error: Data path {data_root} does not exist.")
         return
+        
+    if experiment_in_context_examples > 0:
+        print("Preparing in-context examples...")
+        prepare_in_context_example()
         
     tasks_to_process = [d for d in os.listdir(data_root) if os.path.isdir(os.path.join(data_root, d)) and d != "in-context-example"]
     
@@ -193,7 +197,7 @@ async def run_pipeline():
                     
                     rollout_tasks.append(process_rollout(
                         session, semaphore, task, level, rollout, rollout_path, prompt_template,
-                        views, frames_in_context, ic_str, ic_images, combined_results,
+                        view, frames_in_context, ic_str, ic_images, combined_results,
                         experiment_shuffle_frames
                     ))
             
