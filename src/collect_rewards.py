@@ -105,8 +105,6 @@ async def process_rollout(session, semaphore, task, level, rollout, rollout_path
         if explanation is not None and scores_dict is not None:
             if len(scores_dict) != len(sampled_others):
                 print(f"Warning: Number of scores extracted ({len(scores_dict)}) does not match number of predicted frames ({len(sampled_others)}).")
-                print(f"Scores dict keys: {scores_dict.keys()}")
-                print(f"Expected frame indices for scores: {list(range(1, len(sampled_others) + 1))}")
             # The first frame is explicitly 0% as per the prompt
             results_list = [{
                 "frame": f"{view}_frame_{first_frame:03d}.jpg",
@@ -161,7 +159,7 @@ async def run_pipeline():
     tasks_to_process = [d for d in os.listdir(data_root) if os.path.isdir(os.path.join(data_root, d)) and d != "in-context-example"]
     
     # Limit to 2 concurrent API request to prevent overwhelming the VLM server
-    semaphore = asyncio.Semaphore(3)
+    semaphore = asyncio.Semaphore(2)
     
     # Disable default 5-minute timeout for massive generation requests
     timeout = aiohttp.ClientTimeout(total=None)

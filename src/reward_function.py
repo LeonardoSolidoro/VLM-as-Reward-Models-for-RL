@@ -67,12 +67,15 @@ async def get_reward_score(session, prompt, image_paths):
 
             #print(f"Received response from VLM API:\n{content}\n")
             
+            # Remove <think>...</think> tags if they exist to prevent regex confusion
+            content_no_thoughts = re.sub(r"<think>.*?</think>", "", content, flags=re.IGNORECASE | re.DOTALL)
+            
             # Extract scores for each frame
             scores_dict = {}
             # Look for Frame X: ... <score>Y%</score>
             # We can just find all instances of <score>Y%</score> or similar.
             # However, since they are associated with Frame X, let's find the frame indices and scores.
-            frame_blocks = re.findall(r"Frame\s+(\d+):.*?(?:<score>|Score:)\s*(\d+(?:\.\d+)?)\s*%?\s*(?:</score>)?", content, re.IGNORECASE | re.DOTALL)
+            frame_blocks = re.findall(r"Frame\s+(\d+):.*?(?:<score>|Score:)\s*(\d+(?:\.\d+)?)\s*%?\s*(?:</score>)?", content_no_thoughts, re.IGNORECASE | re.DOTALL)
             
             if frame_blocks:
                 for idx_str, score_str in frame_blocks:
@@ -80,7 +83,7 @@ async def get_reward_score(session, prompt, image_paths):
             else:
                 print("Warning: No frame-specific scores found in the response. Attempting fallback parsing.")
                 # Fallback: just find all <score>...</score>
-                raw_scores = re.findall(r"<score>\s*(\d+(?:\.\d+)?)\s*%?\s*</score>", content, re.IGNORECASE)
+                raw_scores = re.findall(r"<score>\s*(\d+(?:\.\d+)?)\s*%?\s*</score>", content_no_thoughts, re.IGNORECASE)
 
                 if raw_scores:
                     for i, score_str in enumerate(raw_scores):

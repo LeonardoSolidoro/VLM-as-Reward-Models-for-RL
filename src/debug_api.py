@@ -158,15 +158,18 @@ async def main():
                 print(response_text)
                 print("=" * 80)
                 
+                # Remove <think>...</think> tags if they exist to prevent regex confusion
+                response_text_no_thoughts = re.sub(r"<think>.*?</think>", "", response_text, flags=re.IGNORECASE | re.DOTALL)
+                
                 scores_dict = {}
-                frame_blocks = re.findall(r"Frame\s+(\d+):.*?(?:<score>|Score:)\s*(\d+(?:\.\d+)?)\s*%?\s*(?:</score>)?", response_text, re.IGNORECASE | re.DOTALL)
+                frame_blocks = re.findall(r"Frame\s+(\d+):.*?(?:<score>|Score:)\s*(\d+(?:\.\d+)?)\s*%?\s*(?:</score>)?", response_text_no_thoughts, re.IGNORECASE | re.DOTALL)
                 
                 if frame_blocks:
                     print("\nDEBUG: Parsed using Regex A (Frame X: ... <score>Y%)")
                     for idx_str, score_str in frame_blocks:
                         scores_dict[int(idx_str)] = float(score_str)
                 else:
-                    raw_scores = re.findall(r"<score>\s*(\d+(?:\.\d+)?)\s*%?\s*</score>", response_text, re.IGNORECASE)
+                    raw_scores = re.findall(r"<score>\s*(\d+(?:\.\d+)?)\s*%?\s*</score>", response_text_no_thoughts, re.IGNORECASE)
                     if raw_scores:
                         print("\nDEBUG: Parsed using Fallback Regex B (<score>Y%)")
                         for i, score_str in enumerate(raw_scores):
