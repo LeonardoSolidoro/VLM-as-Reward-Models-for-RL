@@ -1,3 +1,4 @@
-src/__pycache__/
 data/
 .env
+Documents/
+VLM_RM/

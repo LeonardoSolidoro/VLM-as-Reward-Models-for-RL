@@ -3,9 +3,7 @@ gymnasium
 numpy
 opencv-python
 python-dotenv
-packaging
-requests
-mlx-vlm
-pillow
-torch
-torchvision
+pyyaml
+scipy
+aiohttp
+matplotlib
