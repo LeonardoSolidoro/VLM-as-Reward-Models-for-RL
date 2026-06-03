@@ -3,615 +3,615 @@
         "raw_scores": [
             {
                 "rollout": "rollout_32",
-                "voc": 0.0
+                "voc": 0.8315789473684211
             },
             {
                 "rollout": "rollout_35",
-                "voc": 0.0
+                "voc": 0.563405056431751
             },
             {
                 "rollout": "rollout_34",
-                "voc": 0.9911892555667042
+                "voc": 0.8982456140350877
             },
             {
                 "rollout": "rollout_33",
-                "voc": 0.0
+                "voc": 0.7140350877192982
             },
             {
                 "rollout": "rollout_42",
-                "voc": 0.0
+                "voc": 0.9475045274280272
             },
             {
                 "rollout": "rollout_45",
-                "voc": 0.0
+                "voc": 0.9408829177873047
             },
             {
                 "rollout": "rollout_5",
-                "voc": 0.9982440723942094
+                "voc": 0.9473684210526316
             },
             {
                 "rollout": "rollout_2",
-                "voc": 0.0
+                "voc": 0.6964912280701754
             },
             {
                 "rollout": "rollout_20",
-                "voc": 1.0
+                "voc": 0.8644142999770633
             },
             {
                 "rollout": "rollout_27",
-                "voc": 0.0
+                "voc": -0.02982456140350877
             },
             {
                 "rollout": "rollout_18",
-                "voc": 0.0
+                "voc": 0.9263157894736841
             },
             {
                 "rollout": "rollout_11",
-                "voc": 0.0
+                "voc": 0.6467749635361377
             },
             {
                 "rollout": "rollout_16",
-                "voc": 0.0
+                "voc": 0.7578947368421053
             },
             {
                 "rollout": "rollout_29",
-                "voc": 0.0
+                "voc": 0.9491228070175438
             },
             {
                 "rollout": "rollout_3",
-                "voc": 0.0
+                "voc": 0.5087719298245614
             },
             {
                 "rollout": "rollout_4",
-                "voc": 0.0
+                "voc": 0.46140350877192987
             },
             {
                 "rollout": "rollout_44",
-                "voc": 0.0
+                "voc": 0.6175438596491227
             },
             {
                 "rollout": "rollout_43",
-                "voc": 0.0
+                "voc": 0.6052631578947367
             },
             {
                 "rollout": "rollout_17",
-                "voc": 0.0
+                "voc": 0.7701754385964912
             },
             {
                 "rollout": "rollout_28",
-                "voc": 0.0
+                "voc": 0.6859649122807018
             },
             {
                 "rollout": "rollout_10",
-                "voc": 0.0
+                "voc": 0.5508771929824561
             },
             {
                 "rollout": "rollout_26",
-                "voc": 0.9982440723942094
+                "voc": 0.17719298245614035
             },
             {
                 "rollout": "rollout_19",
-                "voc": 0.0
+                "voc": 0.8456140350877193
             },
             {
                 "rollout": "rollout_21",
-                "voc": 1.0
+                "voc": 0.22817027207516394
             },
             {
                 "rollout": "rollout_38",
-                "voc": 0.0
+                "voc": 0.8333333333333334
             },
             {
                 "rollout": "rollout_36",
-                "voc": 0.0
+                "voc": 0.8
             },
             {
                 "rollout": "rollout_31",
-                "voc": 0.0
+                "voc": 0.7298245614035088
             },
             {
                 "rollout": "rollout_30",
-                "voc": 0.0
+                "voc": 0.6350877192982456
             },
             {
                 "rollout": "rollout_37",
-                "voc": 0.0
+                "voc": 0.8368421052631579
             },
             {
                 "rollout": "rollout_39",
-                "voc": 0.0
+                "voc": 0.8456140350877193
             },
             {
                 "rollout": "rollout_24",
-                "voc": 0.0
+                "voc": 0.7719298245614035
             },
             {
                 "rollout": "rollout_23",
-                "voc": 0.0
+                "voc": 0.8771929824561402
             },
             {
                 "rollout": "rollout_15",
-                "voc": 0.0
+                "voc": 0.7087719298245614
             },
             {
                 "rollout": "rollout_12",
-                "voc": 0.0
+                "voc": 0.82229055744011
             },
             {
                 "rollout": "rollout_46",
-                "voc": 0.0
+                "voc": 0.7421052631578948
             },
             {
                 "rollout": "rollout_8",
-                "voc": 0.0
+                "voc": 0.787719298245614
             },
             {
                 "rollout": "rollout_41",
-                "voc": 0.0
+                "voc": 0.5666666666666667
             },
             {
                 "rollout": "rollout_48",
-                "voc": 0.0
+                "voc": 0.7017543859649124
             },
             {
                 "rollout": "rollout_1",
-                "voc": 0.0
+                "voc": 0.8486178965257059
             },
             {
                 "rollout": "rollout_6",
-                "voc": 1.0
+                "voc": 0.6842105263157895
             },
             {
                 "rollout": "rollout_13",
-                "voc": 0.0
+                "voc": 0.8684210526315789
             },
             {
                 "rollout": "rollout_14",
-                "voc": 0.0
+                "voc": 0.5473684210526315
             },
             {
                 "rollout": "rollout_22",
-                "voc": 0.0
+                "voc": 0.8398421168305072
             },
             {
                 "rollout": "rollout_25",
-                "voc": 0.0
+                "voc": 0.7473684210526316
             },
             {
                 "rollout": "rollout_7",
-                "voc": 0.0
+                "voc": 0.5964912280701754
             },
             {
                 "rollout": "rollout_49",
-                "voc": 0.0
+                "voc": -0.13157894736842105
             },
             {
                 "rollout": "rollout_9",
-                "voc": 0.0
+                "voc": 0.8298245614035088
             },
             {
                 "rollout": "rollout_40",
-                "voc": 1.0
+                "voc": 0.7403508771929824
             },
             {
                 "rollout": "rollout_47",
-                "voc": 0.0
+                "voc": 0.5912280701754385
             }
         ],
-        "avg_voc": 0.1426056612317372,
-        "median_voc": 0.0,
+        "avg_voc": 0.6923768165620519,
+        "median_voc": 0.7421052631578948,
         "num_rollouts": 49
     },
     "PickCube-v1_eval": {
         "raw_scores": [
             {
                 "rollout": "rollout_32",
-                "voc": 0.0
+                "voc": 0.9143111681920448
             },
             {
                 "rollout": "rollout_35",
-                "voc": 0.0
+                "voc": 0.6994296417073295
             },
             {
                 "rollout": "rollout_34",
-                "voc": 1.0
+                "voc": 0.6783841759580367
             },
             {
                 "rollout": "rollout_33",
-                "voc": 0.0
+                "voc": -0.6832022444645515
             },
             {
                 "rollout": "rollout_42",
-                "voc": 0.0
+                "voc": 0.910465468000326
             },
             {
                 "rollout": "rollout_45",
-                "voc": 0.0
+                "voc": 0.7071067811865475
             },
             {
                 "rollout": "rollout_5",
-                "voc": 1.0
+                "voc": 0.4984642866872812
             },
             {
                 "rollout": "rollout_2",
-                "voc": 0.0
+                "voc": -0.3192982456140351
             },
             {
                 "rollout": "rollout_20",
-                "voc": 0.0
+                "voc": 0.6070175438596491
             },
             {
                 "rollout": "rollout_27",
-                "voc": 0.9995613072831219
+                "voc": 0.6157894736842106
             },
             {
                 "rollout": "rollout_18",
-                "voc": 0.0
+                "voc": 0.8310049214858821
             },
             {
                 "rollout": "rollout_11",
-                "voc": 0.0
+                "voc": -0.33698994029562673
             },
             {
                 "rollout": "rollout_16",
-                "voc": 1.0
+                "voc": 0.4964912280701754
             },
             {
                 "rollout": "rollout_29",
-                "voc": 0.9995613072831219
+                "voc": 0.7280701754385965
             },
             {
                 "rollout": "rollout_3",
-                "voc": 0.0
+                "voc": 0.6324555320336759
             },
             {
                 "rollout": "rollout_4",
-                "voc": 0.0
+                "voc": 0.8615640879331182
             },
             {
                 "rollout": "rollout_44",
-                "voc": 0.0
+                "voc": 0.7743637751812869
             },
             {
                 "rollout": "rollout_43",
-                "voc": 0.9982440723942094
+                "voc": 0.50636248841296
             },
             {
                 "rollout": "rollout_17",
-                "voc": 1.0
+                "voc": 0.8609484322562917
             },
             {
                 "rollout": "rollout_28",
-                "voc": 0.0
+                "voc": 0.8012374330675065
             },
             {
                 "rollout": "rollout_10",
-                "voc": 1.0
+                "voc": 0.3596491228070175
             },
             {
                 "rollout": "rollout_26",
-                "voc": 1.0
+                "voc": 0.26491228070175443
             },
             {
                 "rollout": "rollout_19",
-                "voc": 0.0
+                "voc": 0.7293508627528115
             },
             {
                 "rollout": "rollout_21",
-                "voc": 0.532290647422377
+                "voc": 0.8350877192982457
             },
             {
                 "rollout": "rollout_38",
-                "voc": 1.0
+                "voc": 0.743503382427309
             },
             {
                 "rollout": "rollout_36",
-                "voc": 1.0
+                "voc": 0.612280701754386
             },
             {
                 "rollout": "rollout_31",
-                "voc": 0.0
+                "voc": 0.886546621605825
             },
             {
                 "rollout": "rollout_30",
-                "voc": 0.0
+                "voc": 0.38421052631578945
             },
             {
                 "rollout": "rollout_37",
-                "voc": 0.0
+                "voc": 0.8064941539887523
             },
             {
                 "rollout": "rollout_39",
-                "voc": 0.9624530063715756
+                "voc": 0.47017543859649114
             },
             {
                 "rollout": "rollout_24",
-                "voc": 0.9751293211582021
+                "voc": 0.7992980147742778
             },
             {
                 "rollout": "rollout_23",
-                "voc": 1.0
+                "voc": 0.6017543859649123
             },
             {
                 "rollout": "rollout_15",
-                "voc": 1.0
+                "voc": 0.705421655757038
             },
             {
                 "rollout": "rollout_12",
-                "voc": 1.0
+                "voc": 0.7696358792689184
             },
             {
                 "rollout": "rollout_46",
-                "voc": 0.0
+                "voc": 0.22456140350877193
             },
             {
                 "rollout": "rollout_8",
-                "voc": 0.0
+                "voc": 0.3649122807017544
             },
             {
                 "rollout": "rollout_41",
-                "voc": 0.0
+                "voc": 0.7596491228070175
             },
             {
                 "rollout": "rollout_48",
-                "voc": 1.0
+                "voc": 0.910465468000326
             },
             {
                 "rollout": "rollout_1",
-                "voc": 0.0
+                "voc": 0.8234501657286836
             },
             {
                 "rollout": "rollout_6",
-                "voc": 1.0
+                "voc": 0.30877192982456136
             },
             {
                 "rollout": "rollout_13",
-                "voc": 1.0
+                "voc": 0.512280701754386
             },
             {
                 "rollout": "rollout_14",
-                "voc": 0.0
+                "voc": 0.6043532121194317
             },
             {
                 "rollout": "rollout_22",
-                "voc": 0.9911892555667042
+                "voc": 0.9198327139783105
             },
             {
                 "rollout": "rollout_25",
-                "voc": 1.0
+                "voc": 0.8162007882746657
             },
             {
                 "rollout": "rollout_7",
-                "voc": 0.0
+                "voc": 0.7175438596491229
             },
             {
                 "rollout": "rollout_49",
-                "voc": 0.0
+                "voc": 0.6403508771929824
             },
             {
                 "rollout": "rollout_9",
-                "voc": 0.9956043743251828
+                "voc": 0.8920108793471513
             },
             {
                 "rollout": "rollout_40",
-                "voc": 0.0
+                "voc": 0.9592577539934151
             },
             {
                 "rollout": "rollout_47",
-                "voc": 0.0
+                "voc": 0.7017543859649124
             }
         ],
-        "avg_voc": 0.45824557738376515,
-        "median_voc": 0.0,
+        "avg_voc": 0.6103610708497903,
+        "median_voc": 0.705421655757038,
         "num_rollouts": 49
     },
     "PegInsertionSide-v1_eval": {
         "raw_scores": [
             {
                 "rollout": "rollout_32",
-                "voc": 1.0
+                "voc": 0.28947368421052627
             },
             {
                 "rollout": "rollout_35",
-                "voc": 1.0
+                "voc": 0.9491455067493373
             },
             {
                 "rollout": "rollout_34",
-                "voc": 0.9995613072831219
+                "voc": 0.8842105263157896
             },
             {
                 "rollout": "rollout_33",
-                "voc": 1.0
+                "voc": 0.8889864831236194
             },
             {
                 "rollout": "rollout_42",
-                "voc": 1.0
+                "voc": 0.8860578753103711
             },
             {
                 "rollout": "rollout_45",
-                "voc": 1.0
+                "voc": -0.04035087719298246
             },
             {
                 "rollout": "rollout_5",
-                "voc": 1.0
+                "voc": 0.9308827660752895
             },
             {
                 "rollout": "rollout_2",
-                "voc": 1.0
+                "voc": 0.9075760487679894
             },
             {
                 "rollout": "rollout_20",
-                "voc": 0.9995613072831219
+                "voc": 0.7578040280278787
             },
             {
                 "rollout": "rollout_27",
-                "voc": 0.9995613072831219
+                "voc": 0.9298245614035087
             },
             {
                 "rollout": "rollout_18",
-                "voc": 0.9995613072831219
+                "voc": 0.7842105263157895
             },
             {
                 "rollout": "rollout_11",
-                "voc": 0.9982440723942094
+                "voc": 0.8421052631578947
             },
             {
                 "rollout": "rollout_16",
-                "voc": 1.0
+                "voc": 0.9694274110351512
             },
             {
                 "rollout": "rollout_29",
-                "voc": 0.9995613072831219
+                "voc": 0.8298245614035088
             },
             {
                 "rollout": "rollout_3",
-                "voc": 1.0
+                "voc": 0.9122807017543859
             },
             {
                 "rollout": "rollout_4",
-                "voc": 0.9982440723942094
+                "voc": 0.8874366792335793
             },
             {
                 "rollout": "rollout_44",
-                "voc": 0.9982440723942094
+                "voc": 0.8666666666666666
             },
             {
                 "rollout": "rollout_43",
-                "voc": 1.0
+                "voc": 0.9601927846402254
             },
             {
                 "rollout": "rollout_17",
-                "voc": 1.0
+                "voc": 0.83859649122807
             },
             {
                 "rollout": "rollout_28",
-                "voc": 1.0
+                "voc": 0.49607652720538786
             },
             {
                 "rollout": "rollout_10",
-                "voc": 0.9995613072831219
+                "voc": 0.878243879350175
             },
             {
                 "rollout": "rollout_26",
-                "voc": 1.0
+                "voc": 0.5175438596491229
             },
             {
                 "rollout": "rollout_19",
-                "voc": 1.0
+                "voc": 0.8701754385964912
             },
             {
                 "rollout": "rollout_21",
-                "voc": 0.0
+                "voc": 0.8508771929824561
             },
             {
                 "rollout": "rollout_38",
-                "voc": 0.9960448098142446
+                "voc": 0.8421052631578947
             },
             {
                 "rollout": "rollout_36",
-                "voc": 1.0
+                "voc": 0.9639259303606799
             },
             {
                 "rollout": "rollout_31",
-                "voc": 0.9995613072831219
+                "voc": 0.6140350877192983
             },
             {
                 "rollout": "rollout_30",
-                "voc": 0.9995613072831219
+                "voc": 0.29298245614035084
             },
             {
                 "rollout": "rollout_37",
-                "voc": 0.9995613072831219
+                "voc": 0.8140350877192982
             },
             {
                 "rollout": "rollout_39",
-                "voc": 1.0
+                "voc": 0.6771929824561403
             },
             {
                 "rollout": "rollout_24",
-                "voc": 1.0
+                "voc": 0.8912280701754386
             },
             {
                 "rollout": "rollout_23",
-                "voc": 0.9982440723942094
+                "voc": 0.431578947368421
             },
             {
                 "rollout": "rollout_15",
-                "voc": 0.9995613072831219
+                "voc": 0.6929824561403508
             },
             {
                 "rollout": "rollout_12",
-                "voc": 1.0
+                "voc": 0.9569434813708575
             },
             {
                 "rollout": "rollout_46",
-                "voc": 1.0
+                "voc": 0.8840695376317528
             },
             {
                 "rollout": "rollout_8",
-                "voc": 0.9995613072831219
+                "voc": 0.8736842105263157
             },
             {
                 "rollout": "rollout_41",
-                "voc": 1.0
+                "voc": 0.2
             },
             {
                 "rollout": "rollout_48",
-                "voc": 1.0
+                "voc": 0.943859649122807
             },
             {
                 "rollout": "rollout_1",
-                "voc": 0.9995613072831219
+                "voc": 0.8648830212230336
             },
             {
                 "rollout": "rollout_6",
-                "voc": 1.0
+                "voc": 0.8624694565850756
             },
             {
                 "rollout": "rollout_13",
-                "voc": 0.9995613072831219
+                "voc": 0.1789473684210526
             },
             {
                 "rollout": "rollout_14",
-                "voc": 1.0
+                "voc": 0.9290629121522621
             },
             {
                 "rollout": "rollout_22",
-                "voc": 1.0
+                "voc": 0.3017543859649123
             },
             {
                 "rollout": "rollout_25",
-                "voc": 1.0
+                "voc": 0.8175438596491227
             },
             {
                 "rollout": "rollout_7",
-                "voc": 0.9995613072831219
+                "voc": 0.8947368421052632
             },
             {
                 "rollout": "rollout_49",
-                "voc": 1.0
+                "voc": 0.8719298245614034
             },
             {
                 "rollout": "rollout_9",
-                "voc": 1.0
+                "voc": 0.30526315789473685
             },
             {
                 "rollout": "rollout_40",
-                "voc": 0.9995613072831219
+                "voc": 0.920864005153131
             },
             {
                 "rollout": "rollout_47",
-                "voc": 0.9995613072831219
+                "voc": 0.8087719298245614
             }
         ],
-        "avg_voc": 0.9792245309371639,
-        "median_voc": 1.0,
+        "avg_voc": 0.749430989988457,
+        "median_voc": 0.8648830212230336,
         "num_rollouts": 49
     },
     "global_metrics": {
-        "avg_voc": 0.5266919231842221,
-        "median_voc": 0.9911892555667042,
-        "std_voc": 0.49686073622259497,
+        "avg_voc": 0.6840562924667664,
+        "median_voc": 0.7701754385964912,
+        "std_voc": 0.2780519226759117,
         "num_rollouts": 147
     }
 }

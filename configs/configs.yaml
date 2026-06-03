@@ -1,6 +1,6 @@
 # Data Path Settings
-data_root: "data/maniskill3"
-output_root: "output/maniskill3_rewards"
+data_root: "data/"
+output_root: "output/"
 seed: 42
 
 # Collection Settings
@@ -13,24 +13,12 @@ levels:
 
 # Task Descriptions
 tasks:
-  drawer-open-v3:
-    description: "Control the Sawyer robot arm to approach the drawer handle, grasp it, and pull the drawer completely open towards the robot."
-    policy: "SawyerDrawerOpenV3Policy"
-  button-press-v3:
-    description: "Control the Sawyer robot arm to move its gripper directly above the red button and press it down fully."
-    policy: "SawyerButtonPressV3Policy"
-  peg-insert-side-v3:
-    description: "Control the Sawyer robot arm to pick up the long cylindrical peg and insert it horizontally into the circular hole on the side of the box."
-    policy: "SawyerPegInsertionSideV3Policy"
-  pick-place-v3:
-    description: "Control the Sawyer robot arm to grasp the small puck/block on the table, lift it up, and place it precisely onto the target goal location."
-    policy: "SawyerPickPlaceV3Policy"
   PegInsertionSide-v1:
-    description: "Pick up the peg and insert it into the side hole."
+    description: "Pick up the peg and insert it into the side hole of the box."
   PickCube-v1:
     description: "Grasp the red cube and move it to the green target goal position."
   PushCube-v1:
-    description: "Push the cube to the red-and-white circular goal region in front of it."
+    description: "Push the cube to the red-and-white circular goal region."
 
 # Prompt Template
 reward_prompt_template: |
@@ -58,9 +46,9 @@ reward_prompt_template: |
   {frames_list}
 
 # Experiment Settings
-experiment_name: "exp1.3.3.maniskill3"
+experiment_name: "Gemini-3.1-Flash-Lite-2-Shot-20-Frames"
 views: ["topview"]
 frames_in_context: 20
 experiment_levels: ["expert"]
-experiment_shuffle_frames: false
-experiment_in_context_examples: 1
+experiment_shuffle_frames: true
+experiment_in_context_examples: 2
