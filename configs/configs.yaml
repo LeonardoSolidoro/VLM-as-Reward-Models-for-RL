@@ -45,10 +45,15 @@ reward_prompt_template: |
   Please provide your predictions for the following frames:
   {frames_list}
 
-# Experiment Settings
+# Experiment settings
 experiment_name: "Gemini-3.1-Flash-Lite-2-Shot-20-Frames"
 views: ["topview"]
 frames_in_context: 20
 experiment_levels: ["expert"]
 experiment_shuffle_frames: true
 experiment_in_context_examples: 2
+
+# Data generation settings
+num_rollouts: 50
+num_frames: 20
+enable_moving_camera: true
