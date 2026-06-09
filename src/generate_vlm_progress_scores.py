@@ -8,7 +8,7 @@ import random
 import ssl
 import certifi
 from vlm_api import get_reward_score
-from utilities import set_all_seeds
+from utilities import resolve_camera_data_root, set_all_seeds
 from prepare_in_context_examples import prepare_all_in_context_examples
 
 """ 
@@ -29,18 +29,21 @@ with open(CONFIG_PATH, "r") as f:
 seed = config.get("seed")
 set_all_seeds(seed)
 
+DATA_ROOT = resolve_camera_data_root(
+    config.get("data_root"),
+    config.get("enable_moving_camera", True),
+)
+
 # Extract task descriptions from config
 TASK_DESCRIPTIONS = {name: cfg["description"] for name, cfg in config["tasks"].items()}
 
 def load_in_context_example(task, view, num_in_context_examples):
-    data_root = config.get("data_root")
-    
     ic_str = ""
     ic_images = []
 
     for example_idx in range(num_in_context_examples):
         ic_root = f"in-context-example-{example_idx}"
-        ic_path = os.path.join(data_root, ic_root, task, "in_context_data.json")
+        ic_path = os.path.join(DATA_ROOT, ic_root, task, "in_context_data.json")
 
         if not os.path.exists(ic_path):
             print(f"Warning: In-context example file not found for task {task} at {ic_path}. Skipping this example.")
@@ -57,7 +60,7 @@ def load_in_context_example(task, view, num_in_context_examples):
 
             img_name = frame["images"].get(view)
             if img_name:
-                img_path = os.path.join(data_root, ic_root, task, img_name)
+                img_path = os.path.join(DATA_ROOT, ic_root, task, img_name)
                 ic_images.append(img_path)
 
         ic_str += "\n"
@@ -152,7 +155,6 @@ async def process_rollout(session, semaphore, task, level, rollout, rollout_path
     print(f"Failed to get reward for {task} | {rollout} after {max_retries} attempts.")
 
 async def run_pipeline():
-    data_root = config.get("data_root")
     output_root = config.get("output_root")
     os.makedirs(output_root, exist_ok = True)
 
@@ -165,8 +167,8 @@ async def run_pipeline():
     experiment_shuffle_frames = config.get("experiment_shuffle_frames")
     experiment_in_context_examples = config.get("experiment_in_context_examples")
 
-    if not os.path.exists(data_root):
-        print(f"Error: Data path {data_root} does not exist.")
+    if not os.path.exists(DATA_ROOT):
+        print(f"Error: Data path {DATA_ROOT} does not exist.")
         return
         
     if experiment_in_context_examples > 0:
@@ -175,8 +177,8 @@ async def run_pipeline():
 
     # Find all tasks to process
     tasks_to_process = [
-            d for d in os.listdir(data_root)
-            if os.path.isdir(os.path.join(data_root, d))
+            d for d in os.listdir(DATA_ROOT)
+            if os.path.isdir(os.path.join(DATA_ROOT, d))
             and not d.startswith("in-context-example")
         ]    
     
@@ -194,7 +196,7 @@ async def run_pipeline():
             else:
                 ic_str, ic_images = "", []
                 
-            task_path = os.path.join(data_root, task)
+            task_path = os.path.join(DATA_ROOT, task)
             levels = [d for d in os.listdir(task_path) if os.path.isdir(os.path.join(task_path, d))]
             
             if experiment_levels:

@@ -299,7 +299,7 @@ def main():
 
     num_rollouts = config.get("num_rollouts", 50)
     num_frames = config.get("num_frames", 20)
-    enable_moving_camera = config.get("enable_moving_camera", True)
+    enable_moving_camera = config.get("enable_moving_camera", False)
 
     print(f"Writing data to: {data_root}")
     print(f"Camera type: {'moving' if enable_moving_camera else 'static'}")
