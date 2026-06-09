@@ -1,9 +1,13 @@
-metaworld
+aiohttp
 gymnasium
+h5py
+mani_skill
+matplotlib
+metaworld
 numpy
 opencv-python
 python-dotenv
 pyyaml
+sapien
 scipy
-aiohttp
-matplotlib
+torch

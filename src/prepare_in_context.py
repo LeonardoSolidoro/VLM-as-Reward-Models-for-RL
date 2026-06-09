@@ -14,6 +14,8 @@ with open(CONFIG_PATH, "r") as f:
 
 def prepare_in_context_example():
     data_root = config.get("data_root")
+    if config.get("enable_moving_camera"):
+        data_root = os.path.join(data_root, "moving")
     frames_in_context = config.get("frames_in_context")
     experiment_shuffle_frames = config.get("experiment_shuffle_frames")
     if not os.path.exists(data_root):

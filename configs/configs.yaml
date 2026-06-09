@@ -1,11 +1,12 @@
 # Data Path Settings
-data_root: "data/maniskill3"
+data_root: "data/maniskill3_left"
 output_root: "output/maniskill3_rewards"
 seed: 42
 
 # Collection Settings
-rollouts_per_setting: 10
-camera_names: ["topview", "corner", "corner2"] # Options: 'topview' 'corner', 'corner2', 'corner3', 'behindGripper', 'gripperPOV'
+num_rollouts: 50
+num_frames: 20
+enable_moving_camera: True
 levels:
   - "expert"
   - "partial"
@@ -58,9 +59,9 @@ reward_prompt_template: |
   {frames_list}
 
 # Experiment Settings
-experiment_name: "exp1.3.3.maniskill3"
+experiment_name: "exp1.2.maniskill3_left-qwen3-vl-8b-instruct"
 views: ["topview"]
 frames_in_context: 6
 experiment_levels: ["expert"]
-experiment_shuffle_frames: false
+experiment_shuffle_frames: True
 experiment_in_context_examples: 1

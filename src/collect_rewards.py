@@ -22,6 +22,8 @@ TASK_DESCRIPTIONS = {name: cfg["description"] for name, cfg in config["tasks"].i
 
 def load_in_context_example(task, view):
     data_root = config.get("data_root")
+    if config.get("enable_moving_camera"):
+        data_root = os.path.join(data_root, "moving")
     ic_path = os.path.join(data_root, "in-context-example", task, "in_context_data.json")
     if not os.path.exists(ic_path):
         print(f"Warning: In-context example file not found for task {task} at {ic_path}. Proceeding without in-context example.")
@@ -98,7 +100,7 @@ async def process_rollout(session, semaphore, task, level, rollout, rollout_path
         frames_list=frames_list_str
     )
     
-    max_retries = 3
+    max_retries = 5
     for attempt in range(max_retries):
         async with semaphore:
             explanation, scores_dict = await get_reward_score(session, prompt, image_paths)
@@ -137,6 +139,8 @@ async def process_rollout(session, semaphore, task, level, rollout, rollout_path
 
 async def run_pipeline():
     data_root = config.get("data_root")
+    if config.get("enable_moving_camera"):
+        data_root = os.path.join(data_root, "moving")
     output_root = config.get("output_root")
     os.makedirs(output_root, exist_ok=True)
 

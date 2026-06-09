@@ -29,6 +29,12 @@ This repository reproduces and extends the concepts from the paper *Vision Langu
 
 ## Usage
 
+```bash
+python -m mani_skill.utils.download_demo "PegInsertionSide-v1" -o ./demos
+python -m mani_skill.utils.download_demo "PickCube-v1" -o ./demos
+python -m mani_skill.utils.download_demo "PushCube-v1" -o ./demos
+```
+
 ### 1. Collect Rewards (`src/collect_rewards.py`)
 This script uses `aiohttp` to asynchronously send batches of shuffled rollout frames to the VLM for evaluation. It strictly anchors the initial `frame_000` to a `0%` progress score and asks the VLM to predict the rest.
 

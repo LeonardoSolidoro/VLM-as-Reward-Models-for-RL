@@ -29,6 +29,8 @@ async def main():
     rollout = "rollout_2"
     
     data_root = config.get("data_root")
+    if config.get("enable_moving_camera"):
+        data_root = os.path.join(data_root, "moving")
     rollout_path = os.path.join(data_root, task, level, rollout)
     
     if not os.path.exists(rollout_path):
