@@ -1,7 +1,6 @@
 data/
-finetune_data/
 Documents/
-output/
+finetune_data/
 Qwen3-VL-example/
 VLM_RM/
 .env

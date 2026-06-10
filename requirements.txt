@@ -1,0 +1,29 @@
+# Core project utilities
+numpy
+PyYAML
+Pillow
+scipy
+matplotlib
+
+# Async VLM API scripts
+aiohttp
+certifi
+python-dotenv
+
+# Trajectory generation / robotics data
+opencv-python-headless
+gymnasium
+h5py
+mani-skill
+sapien
+
+# Qwen3-VL LoRA / QLoRA finetuning
+# On RunPod, install torch/torchvision with the CUDA wheel/index matching the image.
+torch
+torchvision
+transformers>=4.57.0
+accelerate
+peft
+bitsandbytes
+safetensors
+tokenizers
