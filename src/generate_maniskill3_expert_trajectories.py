@@ -19,7 +19,12 @@ from utilities import set_all_seeds
 
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "configs", "configs.yaml")
-DEMO_ROOT = os.path.expanduser("~/.maniskill/demos")
+
+PROJECT_ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..")
+)
+
+DEMO_ROOT = os.path.join(PROJECT_ROOT, "h5")
 
 TASKS = ["PegInsertionSide-v1", "PickCube-v1", "PushCube-v1"]
 
