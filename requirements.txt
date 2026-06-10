@@ -1,5 +1,10 @@
+# PyTorch CUDA 12.8
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.7.1
+torchvision==0.22.1
+
 # Core project utilities
-numpy
+numpy<2.0
 PyYAML
 Pillow
 scipy
@@ -18,9 +23,6 @@ mani-skill
 sapien
 
 # Qwen3-VL LoRA / QLoRA finetuning
-# On RunPod, install torch/torchvision with the CUDA wheel/index matching the image.
-torch
-torchvision
 transformers>=4.57.0
 accelerate
 peft
