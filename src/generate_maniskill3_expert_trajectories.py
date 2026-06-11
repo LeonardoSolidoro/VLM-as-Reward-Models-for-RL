@@ -323,21 +323,21 @@ def main():
     print(f"Frames per rollout: {num_frames}")
 
     camera_params = {
-        "az_range": (-60.0, -180.0),    # Min/Max azimuth (left-right) start angle in degrees
+        "az_range": (-90.0, -150.0),    # Min/Max azimuth (left-right) start angle in degrees
         "el_range": (45.0, 60.0),     # Min/Max elevation (up-down) start angle in degrees
         "r_range": (0.9, 1.1),        # Min/Max radius (distance) start in meters
-        "az_amp": 30.0,               # Amplitude of left-right panning in degrees
-        "el_amp": 30.0,                # Amplitude of up-down tilting in degrees
-        "r_amp": 0.05,                # Amplitude of zoom in/out in meters
+        "az_amp": 10.0,               # Amplitude of left-right panning in degrees
+        "el_amp": 10.0,                # Amplitude of up-down tilting in degrees
+        "r_amp": 0.02,                # Amplitude of zoom in/out in meters
         "az_freq": 0.5,               # Sine wave cycles for panning per rollout
         "el_freq": 1,               # Sine wave cycles for tilting per rollout
         "r_freq": 0.5,               # Sine wave cycles for zooming per rollout
-        "az_jitter": 1,             # Max random left-right shake per frame in degrees
-        "el_jitter": 1,             # Max random up-down shake per frame in degrees
+        "az_jitter": 0.5,             # Max random left-right shake per frame in degrees
+        "el_jitter": 0.5,             # Max random up-down shake per frame in degrees
         "target_pos": [0.0, 0.0, 0.2],# The fixed 3D point the camera looks at
-        "target_amp": 0.35,           # Amplitude of target wandering in meters
+        "target_amp": 0.10,           # Amplitude of target wandering in meters
         "target_freq": 1,           # Sine wave cycles for target wandering per rollout
-        "target_jitter": 0.025,         # Max random shake for target position in meters
+        "target_jitter": 0.005,         # Max random shake for target position in meters
     }
 
 

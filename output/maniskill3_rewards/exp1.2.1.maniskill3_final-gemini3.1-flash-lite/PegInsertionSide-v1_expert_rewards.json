@@ -3,30 +3,56 @@
     "step": "eval",
     "level": "expert",
     "results": {
+        "rollout_0": [
+            {
+                "frame": "topview_frame_000.jpg",
+                "score": 0.0
+            },
+            {
+                "frame": "topview_frame_018.jpg",
+                "score": 85.0
+            },
+            {
+                "frame": "topview_frame_004.jpg",
+                "score": 10.0
+            },
+            {
+                "frame": "topview_frame_009.jpg",
+                "score": 20.0
+            },
+            {
+                "frame": "topview_frame_019.jpg",
+                "score": 95.0
+            },
+            {
+                "frame": "topview_frame_001.jpg",
+                "score": 5.0
+            }
+        ],
         "rollout_1": [
             {
                 "frame": "topview_frame_000.jpg",
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_019.jpg",
-                "score": 85.0
+                "frame": "topview_frame_003.jpg",
+                "score": 20.0
             },
             {
-                "frame": "topview_frame_009.jpg",
-                "score": 35.0
+                "frame": "topview_frame_014.jpg",
+                "score": 60.0
             },
             {
                 "frame": "topview_frame_001.jpg",
                 "score": 10.0
             },
             {
-                "frame": "topview_frame_006.jpg",
-                "score": 55.0
+                "frame": "topview_frame_019.jpg",
+                "score": 85.0
             },
             {
-                "frame": "topview_frame_012.jpg",
-                "score": 95.0
+                "frame": "topview_frame_018.jpg",
+                "score": 100.0
             }
         ],
         "rollout_2": [
@@ -35,24 +61,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_019.jpg",
-                "score": 85.0
-            },
-            {
-                "frame": "topview_frame_004.jpg",
+                "frame": "topview_frame_007.jpg",
                 "score": 10.0
             },
             {
-                "frame": "topview_frame_011.jpg",
-                "score": 65.0
+                "frame": "topview_frame_001.jpg",
+                "score": 20.0
             },
             {
-                "frame": "topview_frame_007.jpg",
-                "score": 35.0
+                "frame": "topview_frame_017.jpg",
+                "score": 60.0
             },
             {
-                "frame": "topview_frame_002.jpg",
-                "score": 0.0
+                "frame": "topview_frame_012.jpg",
+                "score": 80.0
+            },
+            {
+                "frame": "topview_frame_019.jpg",
+                "score": 100.0
             }
         ],
         "rollout_3": [
@@ -61,24 +87,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_015.jpg",
-                "score": 94.0
-            },
-            {
-                "frame": "topview_frame_002.jpg",
-                "score": 5.0
-            },
-            {
                 "frame": "topview_frame_019.jpg",
-                "score": 47.0
-            },
-            {
-                "frame": "topview_frame_018.jpg",
-                "score": 100.0
+                "score": 10.0
             },
             {
                 "frame": "topview_frame_009.jpg",
-                "score": 21.0
+                "score": 60.0
+            },
+            {
+                "frame": "topview_frame_001.jpg",
+                "score": 15.0
+            },
+            {
+                "frame": "topview_frame_006.jpg",
+                "score": 50.0
+            },
+            {
+                "frame": "topview_frame_012.jpg",
+                "score": 100.0
             }
         ],
         "rollout_4": [
@@ -87,24 +113,20 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_019.jpg",
-                "score": 65.0
+                "frame": "topview_frame_004.jpg",
+                "score": 40.0
             },
             {
-                "frame": "topview_frame_001.jpg",
-                "score": 10.0
-            },
-            {
-                "frame": "topview_frame_012.jpg",
-                "score": 35.0
-            },
-            {
-                "frame": "topview_frame_003.jpg",
-                "score": 15.0
+                "frame": "topview_frame_011.jpg",
+                "score": 75.0
             },
             {
                 "frame": "topview_frame_007.jpg",
-                "score": 25.0
+                "score": 20.0
+            },
+            {
+                "frame": "topview_frame_002.jpg",
+                "score": 10.0
             }
         ],
         "rollout_5": [
@@ -113,24 +135,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_004.jpg",
-                "score": 35.0
+                "frame": "topview_frame_015.jpg",
+                "score": 40.0
+            },
+            {
+                "frame": "topview_frame_002.jpg",
+                "score": 20.0
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 90.0
+                "score": 100.0
             },
             {
-                "frame": "topview_frame_008.jpg",
-                "score": 55.0
-            },
-            {
-                "frame": "topview_frame_013.jpg",
-                "score": 98.0
+                "frame": "topview_frame_018.jpg",
+                "score": 80.0
             },
             {
                 "frame": "topview_frame_009.jpg",
-                "score": 45.0
+                "score": 10.0
             }
         ],
         "rollout_6": [
@@ -139,24 +161,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_003.jpg",
-                "score": 12.0
+                "frame": "topview_frame_019.jpg",
+                "score": 40.0
             },
             {
-                "frame": "topview_frame_010.jpg",
-                "score": 35.0
+                "frame": "topview_frame_001.jpg",
+                "score": 10.0
+            },
+            {
+                "frame": "topview_frame_012.jpg",
+                "score": 70.0
+            },
+            {
+                "frame": "topview_frame_003.jpg",
+                "score": 100.0
             },
             {
                 "frame": "topview_frame_007.jpg",
-                "score": 28.0
-            },
-            {
-                "frame": "topview_frame_019.jpg",
-                "score": 85.0
-            },
-            {
-                "frame": "topview_frame_009.jpg",
-                "score": 40.0
+                "score": 100.0
             }
         ],
         "rollout_7": [
@@ -165,23 +187,23 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_009.jpg",
-                "score": 35.0
+                "frame": "topview_frame_004.jpg",
+                "score": 20.0
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 85.0
-            },
-            {
-                "frame": "topview_frame_011.jpg",
-                "score": 60.0
-            },
-            {
-                "frame": "topview_frame_013.jpg",
-                "score": 95.0
+                "score": 100.0
             },
             {
                 "frame": "topview_frame_008.jpg",
+                "score": 10.0
+            },
+            {
+                "frame": "topview_frame_013.jpg",
+                "score": 75.0
+            },
+            {
+                "frame": "topview_frame_009.jpg",
                 "score": 15.0
             }
         ],
@@ -191,24 +213,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_002.jpg",
-                "score": 0.0
+                "frame": "topview_frame_003.jpg",
+                "score": 10.0
+            },
+            {
+                "frame": "topview_frame_010.jpg",
+                "score": 15.0
+            },
+            {
+                "frame": "topview_frame_007.jpg",
+                "score": 15.0
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 94.0
-            },
-            {
-                "frame": "topview_frame_011.jpg",
-                "score": 21.0
+                "score": 100.0
             },
             {
                 "frame": "topview_frame_009.jpg",
-                "score": 47.0
-            },
-            {
-                "frame": "topview_frame_013.jpg",
-                "score": 75.0
+                "score": 15.0
             }
         ],
         "rollout_9": [
@@ -217,24 +239,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_013.jpg",
-                "score": 85.0
-            },
-            {
-                "frame": "topview_frame_016.jpg",
-                "score": 80.0
-            },
-            {
-                "frame": "topview_frame_005.jpg",
-                "score": 15.0
+                "frame": "topview_frame_009.jpg",
+                "score": 10.0
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 95.0
+                "score": 60.0
             },
             {
-                "frame": "topview_frame_015.jpg",
+                "frame": "topview_frame_011.jpg",
                 "score": 75.0
+            },
+            {
+                "frame": "topview_frame_013.jpg",
+                "score": 90.0
+            },
+            {
+                "frame": "topview_frame_008.jpg",
+                "score": 5.0
             }
         ],
         "rollout_10": [
@@ -243,24 +265,24 @@
                 "score": 0.0
             },
             {
+                "frame": "topview_frame_002.jpg",
+                "score": 10.0
+            },
+            {
                 "frame": "topview_frame_019.jpg",
-                "score": 85.0
+                "score": 80.0
             },
             {
-                "frame": "topview_frame_012.jpg",
-                "score": 70.0
+                "frame": "topview_frame_011.jpg",
+                "score": 40.0
             },
             {
-                "frame": "topview_frame_014.jpg",
-                "score": 60.0
-            },
-            {
-                "frame": "topview_frame_004.jpg",
-                "score": 15.0
+                "frame": "topview_frame_009.jpg",
+                "score": 30.0
             },
             {
                 "frame": "topview_frame_013.jpg",
-                "score": 75.0
+                "score": 90.0
             }
         ],
         "rollout_11": [
@@ -269,24 +291,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_019.jpg",
-                "score": 85.0
+                "frame": "topview_frame_013.jpg",
+                "score": 30.0
             },
             {
-                "frame": "topview_frame_006.jpg",
-                "score": 15.0
+                "frame": "topview_frame_016.jpg",
+                "score": 40.0
             },
             {
                 "frame": "topview_frame_005.jpg",
-                "score": 25.0
+                "score": 10.0
             },
             {
-                "frame": "topview_frame_004.jpg",
-                "score": 35.0
+                "frame": "topview_frame_019.jpg",
+                "score": 50.0
             },
             {
-                "frame": "topview_frame_013.jpg",
-                "score": 95.0
+                "frame": "topview_frame_015.jpg",
+                "score": 45.0
             }
         ],
         "rollout_12": [
@@ -295,24 +317,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_016.jpg",
-                "score": 75.0
-            },
-            {
-                "frame": "topview_frame_017.jpg",
-                "score": 15.0
-            },
-            {
-                "frame": "topview_frame_009.jpg",
-                "score": 40.0
-            },
-            {
                 "frame": "topview_frame_019.jpg",
                 "score": 60.0
             },
             {
-                "frame": "topview_frame_015.jpg",
+                "frame": "topview_frame_012.jpg",
+                "score": 75.0
+            },
+            {
+                "frame": "topview_frame_014.jpg",
                 "score": 85.0
+            },
+            {
+                "frame": "topview_frame_004.jpg",
+                "score": 20.0
+            },
+            {
+                "frame": "topview_frame_013.jpg",
+                "score": 70.0
             }
         ],
         "rollout_13": [
@@ -321,24 +343,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_010.jpg",
-                "score": 65.0
-            },
-            {
                 "frame": "topview_frame_019.jpg",
-                "score": 85.0
+                "score": 100.0
             },
             {
-                "frame": "topview_frame_011.jpg",
-                "score": 75.0
+                "frame": "topview_frame_006.jpg",
+                "score": 5.0
             },
             {
-                "frame": "topview_frame_007.jpg",
-                "score": 15.0
+                "frame": "topview_frame_005.jpg",
+                "score": 10.0
             },
             {
                 "frame": "topview_frame_004.jpg",
-                "score": 10.0
+                "score": 15.0
+            },
+            {
+                "frame": "topview_frame_013.jpg",
+                "score": 60.0
             }
         ],
         "rollout_14": [
@@ -347,24 +369,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_019.jpg",
-                "score": 85.0
-            },
-            {
-                "frame": "topview_frame_014.jpg",
-                "score": 70.0
+                "frame": "topview_frame_016.jpg",
+                "score": 40.0
             },
             {
                 "frame": "topview_frame_017.jpg",
                 "score": 60.0
             },
             {
-                "frame": "topview_frame_006.jpg",
-                "score": 10.0
+                "frame": "topview_frame_009.jpg",
+                "score": 20.0
             },
             {
-                "frame": "topview_frame_004.jpg",
-                "score": 35.0
+                "frame": "topview_frame_019.jpg",
+                "score": 85.0
+            },
+            {
+                "frame": "topview_frame_015.jpg",
+                "score": 40.0
             }
         ],
         "rollout_15": [
@@ -373,24 +395,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_017.jpg",
-                "score": 94.0
+                "frame": "topview_frame_010.jpg",
+                "score": 60.0
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 94.0
+                "score": 85.0
             },
             {
-                "frame": "topview_frame_006.jpg",
-                "score": 47.0
+                "frame": "topview_frame_011.jpg",
+                "score": 75.0
             },
             {
-                "frame": "topview_frame_010.jpg",
-                "score": 47.0
+                "frame": "topview_frame_007.jpg",
+                "score": 30.0
             },
             {
-                "frame": "topview_frame_001.jpg",
-                "score": 5.0
+                "frame": "topview_frame_004.jpg",
+                "score": 20.0
             }
         ],
         "rollout_16": [
@@ -399,24 +421,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_008.jpg",
-                "score": 65.0
-            },
-            {
                 "frame": "topview_frame_019.jpg",
-                "score": 12.0
+                "score": 30.0
             },
             {
-                "frame": "topview_frame_001.jpg",
-                "score": 35.0
+                "frame": "topview_frame_014.jpg",
+                "score": 60.0
             },
             {
-                "frame": "topview_frame_012.jpg",
+                "frame": "topview_frame_017.jpg",
                 "score": 85.0
             },
             {
-                "frame": "topview_frame_010.jpg",
-                "score": 55.0
+                "frame": "topview_frame_006.jpg",
+                "score": 10.0
+            },
+            {
+                "frame": "topview_frame_004.jpg",
+                "score": 15.0
             }
         ],
         "rollout_17": [
@@ -425,24 +447,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_003.jpg",
-                "score": 12.0
-            },
-            {
                 "frame": "topview_frame_017.jpg",
-                "score": 85.0
+                "score": 60.0
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 65.0
+                "score": 85.0
             },
             {
-                "frame": "topview_frame_005.jpg",
-                "score": 25.0
+                "frame": "topview_frame_006.jpg",
+                "score": 40.0
             },
             {
-                "frame": "topview_frame_011.jpg",
+                "frame": "topview_frame_010.jpg",
                 "score": 75.0
+            },
+            {
+                "frame": "topview_frame_001.jpg",
+                "score": 10.0
             }
         ],
         "rollout_18": [
@@ -451,24 +473,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_007.jpg",
-                "score": 10.0
-            },
-            {
-                "frame": "topview_frame_018.jpg",
-                "score": 75.0
+                "frame": "topview_frame_008.jpg",
+                "score": 40.0
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 60.0
+                "score": 100.0
             },
             {
-                "frame": "topview_frame_017.jpg",
-                "score": 85.0
+                "frame": "topview_frame_001.jpg",
+                "score": 10.0
+            },
+            {
+                "frame": "topview_frame_012.jpg",
+                "score": 80.0
             },
             {
                 "frame": "topview_frame_010.jpg",
-                "score": 35.0
+                "score": 30.0
             }
         ],
         "rollout_19": [
@@ -477,24 +499,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_008.jpg",
-                "score": 35.0
-            },
-            {
-                "frame": "topview_frame_002.jpg",
-                "score": 10.0
-            },
-            {
-                "frame": "topview_frame_019.jpg",
-                "score": 75.0
-            },
-            {
-                "frame": "topview_frame_004.jpg",
-                "score": 15.0
+                "frame": "topview_frame_003.jpg",
+                "score": 20.0
             },
             {
                 "frame": "topview_frame_017.jpg",
+                "score": 70.0
+            },
+            {
+                "frame": "topview_frame_019.jpg",
                 "score": 90.0
+            },
+            {
+                "frame": "topview_frame_005.jpg",
+                "score": 10.0
+            },
+            {
+                "frame": "topview_frame_011.jpg",
+                "score": 50.0
             }
         ],
         "rollout_20": [
@@ -503,24 +525,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_012.jpg",
-                "score": 85.0
+                "frame": "topview_frame_007.jpg",
+                "score": 60.0
             },
             {
-                "frame": "topview_frame_003.jpg",
-                "score": 10.0
+                "frame": "topview_frame_018.jpg",
+                "score": 40.0
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 65.0
+                "score": 90.0
             },
             {
-                "frame": "topview_frame_001.jpg",
-                "score": 5.0
+                "frame": "topview_frame_017.jpg",
+                "score": 20.0
             },
             {
-                "frame": "topview_frame_008.jpg",
-                "score": 35.0
+                "frame": "topview_frame_010.jpg",
+                "score": 30.0
             }
         ],
         "rollout_21": [
@@ -529,24 +551,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_019.jpg",
-                "score": 65.0
-            },
-            {
-                "frame": "topview_frame_011.jpg",
-                "score": 40.0
-            },
-            {
                 "frame": "topview_frame_008.jpg",
-                "score": 55.0
+                "score": 25.0
             },
             {
-                "frame": "topview_frame_003.jpg",
+                "frame": "topview_frame_002.jpg",
                 "score": 15.0
             },
             {
-                "frame": "topview_frame_005.jpg",
-                "score": 10.0
+                "frame": "topview_frame_019.jpg",
+                "score": 85.0
+            },
+            {
+                "frame": "topview_frame_004.jpg",
+                "score": 40.0
+            },
+            {
+                "frame": "topview_frame_017.jpg",
+                "score": 60.0
             }
         ],
         "rollout_22": [
@@ -555,24 +577,24 @@
                 "score": 0.0
             },
             {
+                "frame": "topview_frame_012.jpg",
+                "score": 40.0
+            },
+            {
+                "frame": "topview_frame_003.jpg",
+                "score": 100.0
+            },
+            {
                 "frame": "topview_frame_019.jpg",
-                "score": 98.0
+                "score": 80.0
             },
             {
-                "frame": "topview_frame_018.jpg",
-                "score": 96.0
-            },
-            {
-                "frame": "topview_frame_016.jpg",
-                "score": 45.0
+                "frame": "topview_frame_001.jpg",
+                "score": 20.0
             },
             {
                 "frame": "topview_frame_008.jpg",
-                "score": 25.0
-            },
-            {
-                "frame": "topview_frame_013.jpg",
-                "score": 92.0
+                "score": 60.0
             }
         ],
         "rollout_23": [
@@ -581,24 +603,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_012.jpg",
+                "frame": "topview_frame_019.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_011.jpg",
                 "score": 85.0
             },
             {
-                "frame": "topview_frame_019.jpg",
-                "score": 10.0
+                "frame": "topview_frame_008.jpg",
+                "score": 40.0
             },
             {
-                "frame": "topview_frame_018.jpg",
-                "score": 35.0
-            },
-            {
-                "frame": "topview_frame_014.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_007.jpg",
+                "frame": "topview_frame_003.jpg",
                 "score": 60.0
+            },
+            {
+                "frame": "topview_frame_005.jpg",
+                "score": 20.0
             }
         ],
         "rollout_24": [
@@ -607,24 +629,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_017.jpg",
-                "score": 65.0
+                "frame": "topview_frame_019.jpg",
+                "score": 75.0
             },
             {
-                "frame": "topview_frame_011.jpg",
+                "frame": "topview_frame_018.jpg",
                 "score": 80.0
             },
             {
-                "frame": "topview_frame_019.jpg",
-                "score": 35.0
+                "frame": "topview_frame_016.jpg",
+                "score": 90.0
+            },
+            {
+                "frame": "topview_frame_008.jpg",
+                "score": 40.0
             },
             {
                 "frame": "topview_frame_013.jpg",
                 "score": 90.0
-            },
-            {
-                "frame": "topview_frame_002.jpg",
-                "score": 10.0
             }
         ],
         "rollout_25": [
@@ -633,24 +655,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_007.jpg",
-                "score": 12.0
-            },
-            {
-                "frame": "topview_frame_018.jpg",
-                "score": 75.0
-            },
-            {
-                "frame": "topview_frame_019.jpg",
+                "frame": "topview_frame_012.jpg",
                 "score": 60.0
             },
             {
-                "frame": "topview_frame_005.jpg",
-                "score": 35.0
+                "frame": "topview_frame_019.jpg",
+                "score": 80.0
             },
             {
-                "frame": "topview_frame_015.jpg",
-                "score": 88.0
+                "frame": "topview_frame_018.jpg",
+                "score": 90.0
+            },
+            {
+                "frame": "topview_frame_014.jpg",
+                "score": 30.0
+            },
+            {
+                "frame": "topview_frame_007.jpg",
+                "score": 100.0
             }
         ],
         "rollout_26": [
@@ -659,24 +681,20 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_015.jpg",
-                "score": 94.0
-            },
-            {
-                "frame": "topview_frame_004.jpg",
-                "score": 5.0
-            },
-            {
-                "frame": "topview_frame_001.jpg",
-                "score": 21.0
-            },
-            {
-                "frame": "topview_frame_003.jpg",
-                "score": 0.0
+                "frame": "topview_frame_011.jpg",
+                "score": 100.0
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 100.0
+                "score": 60.0
+            },
+            {
+                "frame": "topview_frame_013.jpg",
+                "score": 80.0
+            },
+            {
+                "frame": "topview_frame_002.jpg",
+                "score": 10.0
             }
         ],
         "rollout_27": [
@@ -685,24 +703,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_019.jpg",
-                "score": 40.0
-            },
-            {
-                "frame": "topview_frame_016.jpg",
-                "score": 75.0
-            },
-            {
-                "frame": "topview_frame_006.jpg",
-                "score": 15.0
-            },
-            {
-                "frame": "topview_frame_008.jpg",
+                "frame": "topview_frame_007.jpg",
                 "score": 10.0
             },
             {
-                "frame": "topview_frame_014.jpg",
-                "score": 85.0
+                "frame": "topview_frame_018.jpg",
+                "score": 75.0
+            },
+            {
+                "frame": "topview_frame_019.jpg",
+                "score": 90.0
+            },
+            {
+                "frame": "topview_frame_005.jpg",
+                "score": 5.0
+            },
+            {
+                "frame": "topview_frame_015.jpg",
+                "score": 60.0
             }
         ],
         "rollout_28": [
@@ -711,24 +729,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_013.jpg",
-                "score": 94.0
+                "frame": "topview_frame_015.jpg",
+                "score": 10.0
             },
             {
-                "frame": "topview_frame_019.jpg",
-                "score": 97.0
+                "frame": "topview_frame_004.jpg",
+                "score": 60.0
             },
             {
                 "frame": "topview_frame_001.jpg",
-                "score": 21.0
+                "score": 15.0
             },
             {
-                "frame": "topview_frame_018.jpg",
-                "score": 100.0
+                "frame": "topview_frame_003.jpg",
+                "score": 50.0
             },
             {
-                "frame": "topview_frame_005.jpg",
-                "score": 47.0
+                "frame": "topview_frame_019.jpg",
+                "score": 40.0
             }
         ],
         "rollout_29": [
@@ -737,24 +755,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_004.jpg",
-                "score": 21.0
-            },
-            {
-                "frame": "topview_frame_007.jpg",
-                "score": 47.0
-            },
-            {
-                "frame": "topview_frame_010.jpg",
-                "score": 5.0
-            },
-            {
                 "frame": "topview_frame_019.jpg",
-                "score": 94.0
+                "score": 90.0
             },
             {
-                "frame": "topview_frame_005.jpg",
-                "score": 100.0
+                "frame": "topview_frame_016.jpg",
+                "score": 70.0
+            },
+            {
+                "frame": "topview_frame_006.jpg",
+                "score": 20.0
+            },
+            {
+                "frame": "topview_frame_008.jpg",
+                "score": 10.0
+            },
+            {
+                "frame": "topview_frame_014.jpg",
+                "score": 60.0
             }
         ],
         "rollout_30": [
@@ -763,24 +781,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_009.jpg",
-                "score": 35.0
-            },
-            {
-                "frame": "topview_frame_016.jpg",
-                "score": 80.0
-            },
-            {
-                "frame": "topview_frame_002.jpg",
-                "score": 12.0
-            },
-            {
-                "frame": "topview_frame_018.jpg",
-                "score": 90.0
+                "frame": "topview_frame_013.jpg",
+                "score": 60.0
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 98.0
+                "score": 85.0
+            },
+            {
+                "frame": "topview_frame_001.jpg",
+                "score": 15.0
+            },
+            {
+                "frame": "topview_frame_018.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_005.jpg",
+                "score": 5.0
             }
         ],
         "rollout_31": [
@@ -789,24 +807,24 @@
                 "score": 0.0
             },
             {
+                "frame": "topview_frame_004.jpg",
+                "score": 15.0
+            },
+            {
+                "frame": "topview_frame_007.jpg",
+                "score": 40.0
+            },
+            {
+                "frame": "topview_frame_010.jpg",
+                "score": 55.0
+            },
+            {
                 "frame": "topview_frame_019.jpg",
-                "score": 94.0
+                "score": 90.0
             },
             {
-                "frame": "topview_frame_017.jpg",
-                "score": 94.0
-            },
-            {
-                "frame": "topview_frame_006.jpg",
-                "score": 21.0
-            },
-            {
-                "frame": "topview_frame_011.jpg",
-                "score": 100.0
-            },
-            {
-                "frame": "topview_frame_003.jpg",
-                "score": 5.0
+                "frame": "topview_frame_005.jpg",
+                "score": 45.0
             }
         ],
         "rollout_32": [
@@ -815,20 +833,20 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_011.jpg",
-                "score": 94.0
+                "frame": "topview_frame_009.jpg",
+                "score": 20.0
+            },
+            {
+                "frame": "topview_frame_016.jpg",
+                "score": 60.0
             },
             {
                 "frame": "topview_frame_002.jpg",
-                "score": 5.0
+                "score": 10.0
             },
             {
-                "frame": "topview_frame_003.jpg",
-                "score": 21.0
-            },
-            {
-                "frame": "topview_frame_014.jpg",
-                "score": 47.0
+                "frame": "topview_frame_018.jpg",
+                "score": 80.0
             },
             {
                 "frame": "topview_frame_019.jpg",
@@ -841,23 +859,19 @@
                 "score": 0.0
             },
             {
+                "frame": "topview_frame_017.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_006.jpg",
+                "score": 30.0
+            },
+            {
                 "frame": "topview_frame_011.jpg",
-                "score": 65.0
+                "score": 80.0
             },
             {
-                "frame": "topview_frame_007.jpg",
-                "score": 15.0
-            },
-            {
-                "frame": "topview_frame_019.jpg",
-                "score": 85.0
-            },
-            {
-                "frame": "topview_frame_009.jpg",
-                "score": 35.0
-            },
-            {
-                "frame": "topview_frame_008.jpg",
+                "frame": "topview_frame_003.jpg",
                 "score": 10.0
             }
         ],
@@ -867,24 +881,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_001.jpg",
-                "score": 10.0
+                "frame": "topview_frame_011.jpg",
+                "score": 20.0
             },
             {
-                "frame": "topview_frame_015.jpg",
-                "score": 75.0
-            },
-            {
-                "frame": "topview_frame_010.jpg",
-                "score": 40.0
-            },
-            {
-                "frame": "topview_frame_003.jpg",
+                "frame": "topview_frame_002.jpg",
                 "score": 25.0
             },
             {
+                "frame": "topview_frame_003.jpg",
+                "score": 30.0
+            },
+            {
+                "frame": "topview_frame_014.jpg",
+                "score": 60.0
+            },
+            {
                 "frame": "topview_frame_019.jpg",
-                "score": 90.0
+                "score": 85.0
             }
         ],
         "rollout_35": [
@@ -893,24 +907,24 @@
                 "score": 0.0
             },
             {
+                "frame": "topview_frame_011.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_007.jpg",
+                "score": 10.0
+            },
+            {
                 "frame": "topview_frame_019.jpg",
-                "score": 85.0
+                "score": 100.0
             },
             {
                 "frame": "topview_frame_009.jpg",
                 "score": 15.0
             },
             {
-                "frame": "topview_frame_015.jpg",
-                "score": 65.0
-            },
-            {
-                "frame": "topview_frame_017.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_005.jpg",
-                "score": 35.0
+                "frame": "topview_frame_008.jpg",
+                "score": 20.0
             }
         ],
         "rollout_36": [
@@ -919,24 +933,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_006.jpg",
-                "score": 12.0
-            },
-            {
-                "frame": "topview_frame_010.jpg",
-                "score": 35.0
-            },
-            {
-                "frame": "topview_frame_014.jpg",
-                "score": 65.0
+                "frame": "topview_frame_001.jpg",
+                "score": 10.0
             },
             {
                 "frame": "topview_frame_015.jpg",
-                "score": 80.0
+                "score": 60.0
+            },
+            {
+                "frame": "topview_frame_010.jpg",
+                "score": 90.0
+            },
+            {
+                "frame": "topview_frame_003.jpg",
+                "score": 25.0
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 90.0
+                "score": 75.0
             }
         ],
         "rollout_37": [
@@ -946,23 +960,23 @@
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 85.0
-            },
-            {
-                "frame": "topview_frame_015.jpg",
                 "score": 75.0
             },
             {
-                "frame": "topview_frame_018.jpg",
-                "score": 65.0
-            },
-            {
-                "frame": "topview_frame_004.jpg",
+                "frame": "topview_frame_009.jpg",
                 "score": 15.0
             },
             {
-                "frame": "topview_frame_010.jpg",
-                "score": 55.0
+                "frame": "topview_frame_015.jpg",
+                "score": 95.0
+            },
+            {
+                "frame": "topview_frame_017.jpg",
+                "score": 50.0
+            },
+            {
+                "frame": "topview_frame_005.jpg",
+                "score": 30.0
             }
         ],
         "rollout_38": [
@@ -971,24 +985,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_018.jpg",
-                "score": 85.0
+                "frame": "topview_frame_006.jpg",
+                "score": 40.0
             },
             {
-                "frame": "topview_frame_017.jpg",
-                "score": 35.0
+                "frame": "topview_frame_010.jpg",
+                "score": 50.0
             },
             {
-                "frame": "topview_frame_009.jpg",
-                "score": 15.0
+                "frame": "topview_frame_014.jpg",
+                "score": 80.0
             },
             {
-                "frame": "topview_frame_005.jpg",
-                "score": 25.0
+                "frame": "topview_frame_015.jpg",
+                "score": 90.0
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 95.0
+                "score": 100.0
             }
         ],
         "rollout_39": [
@@ -997,24 +1011,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_005.jpg",
-                "score": 15.0
-            },
-            {
-                "frame": "topview_frame_009.jpg",
-                "score": 65.0
-            },
-            {
-                "frame": "topview_frame_016.jpg",
-                "score": 85.0
-            },
-            {
                 "frame": "topview_frame_019.jpg",
-                "score": 95.0
+                "score": 40.0
             },
             {
-                "frame": "topview_frame_007.jpg",
-                "score": 35.0
+                "frame": "topview_frame_015.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_018.jpg",
+                "score": 70.0
+            },
+            {
+                "frame": "topview_frame_004.jpg",
+                "score": 10.0
+            },
+            {
+                "frame": "topview_frame_010.jpg",
+                "score": 25.0
             }
         ],
         "rollout_40": [
@@ -1023,16 +1037,68 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_006.jpg",
-                "score": 35.0
+                "frame": "topview_frame_018.jpg",
+                "score": 60.0
+            },
+            {
+                "frame": "topview_frame_017.jpg",
+                "score": 80.0
+            },
+            {
+                "frame": "topview_frame_009.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_005.jpg",
+                "score": 20.0
+            },
+            {
+                "frame": "topview_frame_019.jpg",
+                "score": 40.0
+            }
+        ],
+        "rollout_41": [
+            {
+                "frame": "topview_frame_000.jpg",
+                "score": 0.0
+            },
+            {
+                "frame": "topview_frame_005.jpg",
+                "score": 10.0
+            },
+            {
+                "frame": "topview_frame_009.jpg",
+                "score": 30.0
+            },
+            {
+                "frame": "topview_frame_016.jpg",
+                "score": 60.0
             },
             {
                 "frame": "topview_frame_019.jpg",
                 "score": 85.0
             },
             {
-                "frame": "topview_frame_009.jpg",
+                "frame": "topview_frame_007.jpg",
+                "score": 10.0
+            }
+        ],
+        "rollout_42": [
+            {
+                "frame": "topview_frame_000.jpg",
+                "score": 0.0
+            },
+            {
+                "frame": "topview_frame_006.jpg",
+                "score": 20.0
+            },
+            {
+                "frame": "topview_frame_019.jpg",
                 "score": 60.0
+            },
+            {
+                "frame": "topview_frame_009.jpg",
+                "score": 75.0
             },
             {
                 "frame": "topview_frame_001.jpg",
@@ -1040,10 +1106,10 @@
             },
             {
                 "frame": "topview_frame_002.jpg",
-                "score": 15.0
+                "score": 25.0
             }
         ],
-        "rollout_41": [
+        "rollout_43": [
             {
                 "frame": "topview_frame_000.jpg",
                 "score": 0.0
@@ -1054,22 +1120,22 @@
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 65.0
+                "score": 75.0
             },
             {
                 "frame": "topview_frame_001.jpg",
-                "score": 35.0
+                "score": 20.0
             },
             {
                 "frame": "topview_frame_014.jpg",
-                "score": 85.0
+                "score": 50.0
             },
             {
                 "frame": "topview_frame_018.jpg",
-                "score": 55.0
+                "score": 100.0
             }
         ],
-        "rollout_42": [
+        "rollout_44": [
             {
                 "frame": "topview_frame_000.jpg",
                 "score": 0.0
@@ -1080,71 +1146,19 @@
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 85.0
-            },
-            {
-                "frame": "topview_frame_005.jpg",
-                "score": 35.0
-            },
-            {
-                "frame": "topview_frame_014.jpg",
-                "score": 95.0
-            },
-            {
-                "frame": "topview_frame_012.jpg",
-                "score": 70.0
-            }
-        ],
-        "rollout_43": [
-            {
-                "frame": "topview_frame_000.jpg",
-                "score": 0.0
-            },
-            {
-                "frame": "topview_frame_019.jpg",
-                "score": 15.0
-            },
-            {
-                "frame": "topview_frame_007.jpg",
-                "score": 35.0
-            },
-            {
-                "frame": "topview_frame_011.jpg",
-                "score": 55.0
-            },
-            {
-                "frame": "topview_frame_008.jpg",
                 "score": 75.0
             },
             {
-                "frame": "topview_frame_012.jpg",
-                "score": 95.0
-            }
-        ],
-        "rollout_44": [
-            {
-                "frame": "topview_frame_000.jpg",
-                "score": 0.0
-            },
-            {
-                "frame": "topview_frame_019.jpg",
-                "score": 85.0
-            },
-            {
-                "frame": "topview_frame_006.jpg",
-                "score": 35.0
-            },
-            {
                 "frame": "topview_frame_005.jpg",
+                "score": 10.0
+            },
+            {
+                "frame": "topview_frame_014.jpg",
                 "score": 60.0
             },
             {
-                "frame": "topview_frame_013.jpg",
-                "score": 98.0
-            },
-            {
-                "frame": "topview_frame_008.jpg",
-                "score": 15.0
+                "frame": "topview_frame_012.jpg",
+                "score": 85.0
             }
         ],
         "rollout_45": [
@@ -1153,24 +1167,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_008.jpg",
-                "score": 35.0
-            },
-            {
-                "frame": "topview_frame_005.jpg",
-                "score": 12.0
-            },
-            {
                 "frame": "topview_frame_019.jpg",
-                "score": 65.0
-            },
-            {
-                "frame": "topview_frame_011.jpg",
                 "score": 85.0
             },
             {
-                "frame": "topview_frame_014.jpg",
-                "score": 55.0
+                "frame": "topview_frame_007.jpg",
+                "score": 25.0
+            },
+            {
+                "frame": "topview_frame_011.jpg",
+                "score": 40.0
+            },
+            {
+                "frame": "topview_frame_008.jpg",
+                "score": 30.0
+            },
+            {
+                "frame": "topview_frame_012.jpg",
+                "score": 60.0
             }
         ],
         "rollout_46": [
@@ -1180,23 +1194,23 @@
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 94.0
+                "score": 60.0
             },
             {
-                "frame": "topview_frame_016.jpg",
-                "score": 94.0
+                "frame": "topview_frame_006.jpg",
+                "score": 95.0
+            },
+            {
+                "frame": "topview_frame_005.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_013.jpg",
+                "score": 80.0
             },
             {
                 "frame": "topview_frame_008.jpg",
-                "score": 47.0
-            },
-            {
-                "frame": "topview_frame_007.jpg",
-                "score": 47.0
-            },
-            {
-                "frame": "topview_frame_014.jpg",
-                "score": 94.0
+                "score": 90.0
             }
         ],
         "rollout_47": [
@@ -1205,24 +1219,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_016.jpg",
-                "score": 35.0
-            },
-            {
-                "frame": "topview_frame_001.jpg",
+                "frame": "topview_frame_008.jpg",
                 "score": 10.0
             },
             {
-                "frame": "topview_frame_008.jpg",
-                "score": 60.0
+                "frame": "topview_frame_005.jpg",
+                "score": 20.0
             },
             {
                 "frame": "topview_frame_019.jpg",
-                "score": 85.0
+                "score": 50.0
             },
             {
-                "frame": "topview_frame_007.jpg",
-                "score": 25.0
+                "frame": "topview_frame_011.jpg",
+                "score": 75.0
+            },
+            {
+                "frame": "topview_frame_014.jpg",
+                "score": 100.0
             }
         ],
         "rollout_48": [
@@ -1231,24 +1245,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_017.jpg",
-                "score": 85.0
-            },
-            {
-                "frame": "topview_frame_011.jpg",
-                "score": 60.0
-            },
-            {
-                "frame": "topview_frame_012.jpg",
+                "frame": "topview_frame_019.jpg",
                 "score": 70.0
             },
             {
-                "frame": "topview_frame_013.jpg",
-                "score": 75.0
+                "frame": "topview_frame_016.jpg",
+                "score": 40.0
             },
             {
-                "frame": "topview_frame_019.jpg",
-                "score": 95.0
+                "frame": "topview_frame_008.jpg",
+                "score": 10.0
+            },
+            {
+                "frame": "topview_frame_007.jpg",
+                "score": 5.0
+            },
+            {
+                "frame": "topview_frame_014.jpg",
+                "score": 90.0
             }
         ],
         "rollout_49": [
@@ -1257,24 +1271,24 @@
                 "score": 0.0
             },
             {
-                "frame": "topview_frame_019.jpg",
-                "score": 94.0
-            },
-            {
-                "frame": "topview_frame_018.jpg",
-                "score": 94.0
-            },
-            {
-                "frame": "topview_frame_006.jpg",
-                "score": 47.0
+                "frame": "topview_frame_016.jpg",
+                "score": 60.0
             },
             {
                 "frame": "topview_frame_001.jpg",
-                "score": 5.0
+                "score": 20.0
             },
             {
-                "frame": "topview_frame_009.jpg",
-                "score": 47.0
+                "frame": "topview_frame_008.jpg",
+                "score": 100.0
+            },
+            {
+                "frame": "topview_frame_019.jpg",
+                "score": 80.0
+            },
+            {
+                "frame": "topview_frame_007.jpg",
+                "score": 100.0
             }
         ]
     }

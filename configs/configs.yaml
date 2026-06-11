@@ -1,5 +1,5 @@
 # Data Path Settings
-data_root: "data/maniskill3_left"
+data_root: "data/maniskill3_final"
 output_root: "output/maniskill3_rewards"
 seed: 42
 
@@ -59,7 +59,7 @@ reward_prompt_template: |
   {frames_list}
 
 # Experiment Settings
-experiment_name: "exp1.2.maniskill3_left-qwen3-vl-8b-instruct"
+experiment_name: "exp1.2.maniskill3_final-qwen3-vl-8b-instruct"
 views: ["topview"]
 frames_in_context: 6
 experiment_levels: ["expert"]
