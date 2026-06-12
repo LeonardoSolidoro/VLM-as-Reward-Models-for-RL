@@ -118,6 +118,7 @@ def parse_args():
     parser.add_argument("--per-device-train-batch-size", type=int, default=1)
     parser.add_argument("--gradient-accumulation-steps", type=int, default=1)
     parser.add_argument("--max-steps", type=int, default=-1)
+    parser.add_argument("--dataloader-num-workers", type=int, default=4)
     parser.add_argument("--lora-r", type=int, default=16)
     parser.add_argument("--lora-alpha", type=int, default=32)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
@@ -161,6 +162,9 @@ def main():
         eval_strategy="epoch" if val_dataset is not None else "no",
         save_strategy="epoch",
         save_total_limit=2,
+        dataloader_num_workers=args.dataloader_num_workers,
+        dataloader_pin_memory=True,
+        dataloader_persistent_workers=args.dataloader_num_workers > 0,
         bf16=args.bf16,
         fp16=torch.cuda.is_available() and not args.bf16,
         gradient_checkpointing=True,

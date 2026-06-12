@@ -1,7 +1,6 @@
 import json
 import os
 import shutil
-from turtle import forward
 
 import cv2
 import gymnasium as gym

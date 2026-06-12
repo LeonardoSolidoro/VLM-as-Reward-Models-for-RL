@@ -59,11 +59,6 @@ def load_rgb_image(path):
     return Image.open(path).convert("RGB")
 
 
-def load_sample_images(sample):
-    image_paths = [sample["initial_image"]] + sample["images"]
-    return [load_rgb_image(path) for path in image_paths]
-
-
 def validate_sample(sample):
     if len(sample["images"]) != NUM_QUERY_FRAMES:
         raise ValueError(f"{sample['id']} has {len(sample['images'])} query images")
@@ -181,6 +176,17 @@ class QwenProgressDataset(Dataset):
         self.samples = load_jsonl(self.jsonl_path)
         self.processor = processor
 
+        self._prepared_samples = []
+        for sample in self.samples:
+            validate_sample(sample)
+            self._prepared_samples.append(
+                {
+                    "image_paths": [sample["initial_image"]] + sample["images"],
+                    "user_prompt": build_user_prompt(sample, self.prompt_template),
+                    "assistant_answer": build_assistant_answer(sample, self.prompt_template),
+                }
+            )
+
         if self.processor is None and model_id is not None:
             from transformers import AutoProcessor
 
@@ -191,13 +197,10 @@ class QwenProgressDataset(Dataset):
 
     def format_sample(self, idx):
         sample = self.samples[idx]
-        validate_sample(sample)
+        prepared_sample = self._prepared_samples[idx]
+        images = [load_rgb_image(path) for path in prepared_sample["image_paths"]]
 
-        images = load_sample_images(sample)
-        user_prompt = build_user_prompt(sample, self.prompt_template)
-        assistant_answer = build_assistant_answer(sample, self.prompt_template)
-
-        return sample, images, user_prompt, assistant_answer
+        return sample, images, prepared_sample["user_prompt"], prepared_sample["assistant_answer"]
 
     def __getitem__(self, idx):
         if self.processor is None:
