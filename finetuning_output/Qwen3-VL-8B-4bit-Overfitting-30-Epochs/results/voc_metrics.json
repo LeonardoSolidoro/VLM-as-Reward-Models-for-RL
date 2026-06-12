@@ -1,0 +1,15 @@
+{
+  "input_json": "finetuning_output/Qwen3-VL-8B-Instruct-Overfitting-30-Epochs/tiny_overfit_predictions.json",
+  "num_examples": 6,
+  "mean_voc": 0.8909356725146199,
+  "median_voc": 0.8991228070175439,
+  "std_voc": 0.10066678624830427,
+  "vocs": [
+    0.9982456140350877,
+    0.8456140350877193,
+    0.8929824561403509,
+    0.7035087719298245,
+    1.0,
+    0.9052631578947368
+  ]
+}

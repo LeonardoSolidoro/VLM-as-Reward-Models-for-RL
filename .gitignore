@@ -1,7 +1,9 @@
 data/
 Documents/
 finetune_data/
-finetuning_output/
+h5/
+finetuning_output/Qwen3-VL-8B-4bit-Real-3-Epochs/lora_weights/
+finetuning_output/Qwen3-VL-8B-4bit-Overfitting-30-Epochs/lora_weights/
 Qwen3-VL-example/
 VLM_RM/
 .env
