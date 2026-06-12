@@ -117,25 +117,39 @@ def update_moving_camera(
     # Make camera move left / right smoothly
     azimuth = (
         base_az
-        + 15.0 * np.sin(2.0 * np.pi * t)
-        + np.random.uniform(-2.0, 2.0)
+        + 10.0 * np.sin(np.pi * t)
+        + np.random.uniform(-0.5, 0.5)
     )
 
     # Make camera move up / down smoothly
     elevation = (
         base_el
-        + 8.0 * np.sin(np.pi * t)
-        + np.random.uniform(-1.0, 1.0)
+        + 10.0 * np.sin(2.0 * np.pi * t)
+        + np.random.uniform(-0.5, 0.5)
     )
 
     # Make camera move closer / farther smoothly
     radius = (
         base_r
-        + 0.08 * np.sin(1.5 * np.pi * t)
+        + 0.02 * np.sin(np.pi * t)
     )
 
-    # Roughly the workspace center
-    target = np.array([0.0, 0.0, 0.2])
+    # Target wanders smoothly around the base target_pos
+    target_x = (
+        0.0
+        + 0.10 * np.sin(2.0 * np.pi * t)
+        + np.random.uniform(-0.005, 0.005)
+    )
+    target_y = (
+        0.0
+        + 0.10 * np.cos(2.6 * np.pi * t)
+        + np.random.uniform(-0.005, 0.005)
+    )
+    target_z = (
+        0.2
+        + np.random.uniform(-0.005, 0.005)
+    )
+    target = np.array([target_x, target_y, target_z])
 
     # Move the camera to the new pose
     pose = camera_pose_from_spherical(
@@ -203,9 +217,9 @@ def export_task(task, data_root, views, num_rollouts, num_frames, enable_moving_
 
             env.reset(**episode["reset_kwargs"])
 
-            base_az = np.random.uniform(-45.0, 45.0)
-            base_el = np.random.uniform(25.0, 55.0)
-            base_r = np.random.uniform(0.9, 1.3)
+            base_az = np.random.uniform(-90.0, -150.0)
+            base_el = np.random.uniform(45.0, 60.0)
+            base_r = np.random.uniform(0.9, 1.1)
 
             traj = h5[f"traj_{episode['episode_id']}"]
 
@@ -286,9 +300,9 @@ def main():
     with open(CONFIG_PATH, "r") as f:
         config = yaml.safe_load(f)
 
-    set_all_seeds(config.get("seed", 0))
+    set_all_seeds(config.get("seed"))
 
-    data_root = config.get("data_root", "data")
+    data_root = config.get("data_root")
 
     if not os.path.isabs(data_root):
         data_root = os.path.join(
@@ -299,11 +313,11 @@ def main():
 
     data_root = os.path.abspath(data_root)
 
-    views = config.get("views", ["moving"])
+    views = config.get("views")
 
-    num_rollouts = config.get("num_rollouts", 50)
-    num_frames = config.get("num_frames", 20)
-    enable_moving_camera = config.get("enable_moving_camera", False)
+    num_rollouts = config.get("num_rollouts")
+    num_frames = config.get("num_frames")
+    enable_moving_camera = config.get("enable_moving_camera")
 
     print(f"Writing data to: {data_root}")
     print(f"Camera type: {'moving' if enable_moving_camera else 'static'}")

@@ -7,3 +7,5 @@ finetuning_output/Qwen3-VL-8B-4bit-Overfitting-30-Epochs/lora_weights/
 Qwen3-VL-example/
 VLM_RM/
 .env
+__pycache__/
+.vscode/
