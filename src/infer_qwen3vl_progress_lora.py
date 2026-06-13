@@ -74,7 +74,10 @@ def main():
     processor = AutoProcessor.from_pretrained(args.model_id)
 
     print(f"Loading base model: {args.model_id}")
-    model_kwargs = {"device_map": "auto"}
+    model_kwargs = {
+        "device_map": "auto",
+        "attn_implementation": "flash_attention_2"
+    }
     if torch.cuda.is_available():
         model_kwargs["dtype"] = dtype
     model = AutoModelForImageTextToText.from_pretrained(args.model_id, **model_kwargs)
