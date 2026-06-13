@@ -1,7 +1,7 @@
-# PyTorch CUDA 12.8
---extra-index-url https://download.pytorch.org/whl/cu128
-torch==2.7.1
-torchvision==0.22.1
+# PyTorch CUDA 12.4
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.5.1
+torchvision==0.20.1
 
 # Core project utilities
 numpy<2.0

@@ -259,7 +259,7 @@ def resolve_qlora_arg(args):
 def load_model(args, use_qlora):
     dtype = torch.bfloat16 if args.bf16 else torch.float16
     model_kwargs = {
-        "attn_implementation": "sdpa"
+        "attn_implementation": "flash_attention_2"
     }
     if torch.cuda.is_available():
         model_kwargs["dtype"] = dtype
