@@ -128,12 +128,8 @@ def main():
     repo_root = Path(__file__).resolve().parents[1]
     config = load_config(repo_root)
     seed = int(config.get("seed", 42))
-
-    enable_moving_camera = config.get("enable_moving_camera")
-    camera_type = "moving" if enable_moving_camera else "static"
-
-    data_root = repo_root / config.get("data_root", "data") / camera_type
-    output_root = repo_root / ("finetune_data_moving" if enable_moving_camera else "finetune_data")
+    data_root = repo_root / config.get("data_root", "data") / "moving"
+    output_root = repo_root / "finetune_data" / "moving"
     output_root.mkdir(exist_ok=True)
 
     task_descriptions = {

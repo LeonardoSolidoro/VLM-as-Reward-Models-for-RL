@@ -90,10 +90,14 @@ def load_model(args, use_qlora):
 
 
 def add_lora(model, args, use_qlora):
-    from peft import LoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training
+    from peft import LoraConfig, PeftModel, TaskType, get_peft_model, prepare_model_for_kbit_training
 
     if use_qlora:
         model = prepare_model_for_kbit_training(model)
+
+    if args.lora_checkpoint:
+        print(f"Loading existing LoRA adapter from: {args.lora_checkpoint}")
+        return PeftModel.from_pretrained(model, args.lora_checkpoint, is_trainable=True)
 
     lora_config = LoraConfig(
         r=args.lora_r,
@@ -119,6 +123,7 @@ def parse_args():
     parser.add_argument("--gradient-accumulation-steps", type=int, default=1)
     parser.add_argument("--max-steps", type=int, default=-1)
     parser.add_argument("--dataloader-num-workers", type=int, default=4)
+    parser.add_argument("--lora-checkpoint", default=None)
     parser.add_argument("--lora-r", type=int, default=16)
     parser.add_argument("--lora-alpha", type=int, default=32)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
