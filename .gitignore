@@ -3,6 +3,7 @@ Documents/
 finetune_data/
 finetuning_output/Qwen3-VL-8B-4bit-Overfitting-30-Epochs-static/lora_weights/
 finetuning_output/Qwen3-VL-8B-4bit-Real-3-Epochs-static/lora_weights/
+finetuning_output/Qwen3-VL-8B-4bit-Real-3-Epochs-moving-continued/lora_weights/
 h5/
 Qwen3-VL-example/
 VLM_RM/
