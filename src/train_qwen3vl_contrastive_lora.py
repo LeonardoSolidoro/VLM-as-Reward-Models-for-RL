@@ -81,8 +81,27 @@ class Qwen3VLContrastiveWrapper(nn.Module):
             # Output might be a tuple or a tensor
             self.vision_hook_output = output[0] if isinstance(output, tuple) else output
             
-        # Hook into the vision encoder (model.visual)
-        self.hook_handle = self.model.visual.register_forward_hook(hook)
+        # Dynamically find the vision encoder using BFS (handles any PEFT wrapping or deep nesting)
+        def find_vision_module(root):
+            queue = [root]
+            while queue:
+                current = queue.pop(0)
+                for name, child in current.named_children():
+                    if name in ["visual", "vision_model", "vision_tower", "vision_encoder"]:
+                        return current, name, child
+                for child in current.children():
+                    queue.append(child)
+            return None, None, None
+
+        self.vision_parent, self.vision_module_name, vision_module = find_vision_module(self.model)
+                
+        if vision_module is None:
+            # Let's print out the top-level structure to help debug if it's completely missing
+            top_level = [n for n, c in getattr(self.model, "base_model", self.model).named_children()]
+            raise AttributeError(f"CRITICAL: No vision encoder found anywhere in the model tree! Top level modules: {top_level}")
+            
+        # Hook into the vision encoder
+        self.hook_handle = vision_module.register_forward_hook(hook)
 
     def forward(self, input_ids=None, attention_mask=None, labels=None, pixel_values=None, image_grid_thw=None, pixel_values_positive=None, image_grid_thw_positive=None, frame_indices=None, trajectory_indices=None, **kwargs):
         # 1. Forward pass for the anchor (computes Cross Entropy loss)
@@ -108,8 +127,12 @@ class Qwen3VLContrastiveWrapper(nn.Module):
         
         # 2. Forward pass for the positive images through the vision encoder only
         self.vision_hook_output = None
+        
+        # Retrieve the dynamically found vision module
+        vision_module = getattr(self.vision_parent, self.vision_module_name)
+        
         # Provide grid_thw as Qwen visual expects it
-        pos_embeds = self.model.visual(pixel_values_positive, grid_thw=image_grid_thw_positive)
+        pos_embeds = vision_module(pixel_values_positive, grid_thw=image_grid_thw_positive)
         if isinstance(pos_embeds, tuple):
             pos_embeds = pos_embeds[0]
             
