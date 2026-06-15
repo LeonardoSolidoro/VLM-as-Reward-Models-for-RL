@@ -78,8 +78,11 @@ class Qwen3VLContrastiveWrapper(nn.Module):
         self.vision_hook_output = None
         
         def hook(module, input, output):
-            # Output might be a tuple or a tensor
-            self.vision_hook_output = output[0] if isinstance(output, tuple) else output
+            # Output might be a dict-like object with last_hidden_state, a tuple or a tensor
+            if hasattr(output, "last_hidden_state"):
+                self.vision_hook_output = output.last_hidden_state
+            else:
+                self.vision_hook_output = output[0] if isinstance(output, tuple) else output
             
         # Dynamically find the vision encoder using BFS (handles any PEFT wrapping or deep nesting)
         def find_vision_module(root):
@@ -127,13 +130,12 @@ class Qwen3VLContrastiveWrapper(nn.Module):
         
         # 2. Forward pass for the positive images through the vision encoder only
         self.vision_hook_output = None
-        
-        # Retrieve the dynamically found vision module
-        vision_module = getattr(self.vision_parent, self.vision_module_name)
-        
         # Provide grid_thw as Qwen visual expects it
+        vision_module = getattr(self.vision_parent, self.vision_module_name)
         pos_embeds = vision_module(pixel_values_positive, grid_thw=image_grid_thw_positive)
-        if isinstance(pos_embeds, tuple):
+        if hasattr(pos_embeds, "last_hidden_state"):
+            pos_embeds = pos_embeds.last_hidden_state
+        elif isinstance(pos_embeds, tuple):
             pos_embeds = pos_embeds[0]
             
         # Determine patches per image to split the embeddings
@@ -239,6 +241,14 @@ class Qwen3VLContrastiveWrapper(nn.Module):
         # Expose to HF Trainer to ensure gradient checkpointing activates correctly
         if hasattr(self.model, "enable_input_require_grads"):
             self.model.enable_input_require_grads(**kwargs)
+
+    def gradient_checkpointing_enable(self, **kwargs):
+        if hasattr(self.model, "gradient_checkpointing_enable"):
+            self.model.gradient_checkpointing_enable(**kwargs)
+
+    def gradient_checkpointing_disable(self, **kwargs):
+        if hasattr(self.model, "gradient_checkpointing_disable"):
+            self.model.gradient_checkpointing_disable(**kwargs)
             
     def get_input_embeddings(self):
         # Expose to HF Trainer for standard LLM compatibility
@@ -246,7 +256,19 @@ class Qwen3VLContrastiveWrapper(nn.Module):
             return self.model.get_input_embeddings()
         return None
 
+    def state_dict(self, *args, **kwargs):
+        # CRITICAL: Prevent Hugging Face Trainer from trying to save the entire frozen 8B base model!
+        # Only return the parameters that actually require gradients (LoRA + Pooler).
+        state_dict = {}
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                state_dict[name] = param
+        return state_dict
     def save_pretrained(self, save_directory, **kwargs):
+        # Remove kwargs injected by Trainer that are incompatible with PeftModel
+        kwargs.pop("state_dict", None)
+        kwargs.pop("safe_serialization", None)
+
         # Delegate to the PeftModel to strictly save only the lightweight LoRA adapters
         self.model.save_pretrained(save_directory, **kwargs)
         # Save our custom contrastive parameters alongside the adapter
