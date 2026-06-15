@@ -18,6 +18,27 @@ echo "=================================================="
 cd /workspace
 mkdir -p /workspace/envs
 
+# Ensure conda is in path if it was installed previously but the terminal forgot it
+if [ -d "/workspace/miniconda3" ] && ! command -v conda &> /dev/null; then
+    export PATH="/workspace/miniconda3/bin:$PATH"
+fi
+
+# Install Miniconda into /workspace if it doesn't exist
+if ! command -v conda &> /dev/null; then
+    echo "Conda not found! Installing Miniconda to /workspace/miniconda3..."
+    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+    bash miniconda.sh -b -p /workspace/miniconda3
+    rm miniconda.sh
+    export PATH="/workspace/miniconda3/bin:$PATH"
+    echo "Miniconda installed successfully."
+fi
+
+# Automatically accept Anaconda Terms of Service to prevent non-interactive script crashes
+if command -v conda &> /dev/null; then
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main || true
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r || true
+fi
+
 ENV_PREFIX="/workspace/envs/VLM_RM_flashattn"
 
 if [ ! -d "$ENV_PREFIX" ]; then
