@@ -53,7 +53,8 @@ class QwenContrastiveCollator:
 class AttentionalPooler(nn.Module):
     def __init__(self, embed_dim, num_heads=8):
         super().__init__()
-        self.query = nn.Parameter(torch.randn(1, 1, embed_dim))
+        # Initialize with standard deviation scaled by embed_dim to prevent attention logit explosion
+        self.query = nn.Parameter(torch.randn(1, 1, embed_dim) * 0.02)
         self.mha = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
 
     def forward(self, x):
@@ -77,13 +78,6 @@ class Qwen3VLContrastiveWrapper(nn.Module):
         self.logit_scale = nn.Parameter(torch.ones([]) * math.log(1 / 0.07))
         self.vision_hook_output = None
         
-        def hook(module, input, output):
-            # Output might be a dict-like object with last_hidden_state, a tuple or a tensor
-            if hasattr(output, "last_hidden_state"):
-                self.vision_hook_output = output.last_hidden_state
-            else:
-                self.vision_hook_output = output[0] if isinstance(output, tuple) else output
-            
         # Dynamically find the vision encoder using BFS (handles any PEFT wrapping or deep nesting)
         def find_vision_module(root):
             queue = [root]
@@ -98,17 +92,13 @@ class Qwen3VLContrastiveWrapper(nn.Module):
 
         self.vision_parent, self.vision_module_name, vision_module = find_vision_module(self.model)
                 
-        if vision_module is None:
+        if self.vision_module_name is None:
             # Let's print out the top-level structure to help debug if it's completely missing
             top_level = [n for n, c in getattr(self.model, "base_model", self.model).named_children()]
             raise AttributeError(f"CRITICAL: No vision encoder found anywhere in the model tree! Top level modules: {top_level}")
             
-        # Hook into the vision encoder
-        self.hook_handle = vision_module.register_forward_hook(hook)
-
     def forward(self, input_ids=None, attention_mask=None, labels=None, pixel_values=None, image_grid_thw=None, pixel_values_positive=None, image_grid_thw_positive=None, frame_indices=None, trajectory_indices=None, **kwargs):
-        # 1. Forward pass for the anchor (computes Cross Entropy loss)
-        self.vision_hook_output = None
+        # 1. Forward pass for the anchor (computes Cross Entropy loss for text progress)
         outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -119,6 +109,10 @@ class Qwen3VLContrastiveWrapper(nn.Module):
         )
         ce_loss = outputs.loss
         
+        # Guard against NaN ce_loss if a batch contains entirely IGNORE_INDEX labels
+        if ce_loss is not None and torch.isnan(ce_loss):
+            ce_loss = ce_loss * 0.0
+            
         # If no images are present, return immediately with a dummy loss for DDP safety
         if pixel_values is None or pixel_values_positive is None:
             dummy_loss = sum(p.sum() for p in self.pooler.parameters()) * 0.0
@@ -126,17 +120,25 @@ class Qwen3VLContrastiveWrapper(nn.Module):
             total_loss = (ce_loss if ce_loss is not None else 0.0) + dummy_loss
             return {"loss": total_loss, "ce_loss": ce_loss, "contrastive_loss": dummy_loss, "logits": outputs.logits}
             
-        anchor_embeds = self.vision_hook_output # [TotalPatches, EmbedDim]
-        
-        # 2. Forward pass for the positive images through the vision encoder only
-        self.vision_hook_output = None
-        # Provide grid_thw as Qwen visual expects it
+        # 2. Forward pass for Contrastive Embeddings (Batched Anchor + Positive)
+        # We explicitly run both through the vision module to guarantee perfect autograd graphs
+        # because gradient checkpointing in the main pass detaches hook activations!
         vision_module = getattr(self.vision_parent, self.vision_module_name)
-        pos_embeds = vision_module(pixel_values_positive, grid_thw=image_grid_thw_positive)
-        if hasattr(pos_embeds, "last_hidden_state"):
-            pos_embeds = pos_embeds.last_hidden_state
-        elif isinstance(pos_embeds, tuple):
-            pos_embeds = pos_embeds[0]
+        
+        combined_pixel_values = torch.cat([pixel_values, pixel_values_positive], dim=0)
+        combined_grid_thw = torch.cat([image_grid_thw, image_grid_thw_positive], dim=0)
+        
+        combined_embeds = vision_module(combined_pixel_values, grid_thw=combined_grid_thw)
+        
+        # Bulletproof unpacking for Hugging Face ModelOutputs (e.g. BaseModelOutputWithDeepstackFeatures)
+        if not isinstance(combined_embeds, torch.Tensor):
+            if hasattr(combined_embeds, "last_hidden_state") and combined_embeds.last_hidden_state is not None:
+                combined_embeds = combined_embeds.last_hidden_state
+            else:
+                # Hugging Face ModelOutputs behave like tuples, so index 0 is always the primary hidden state
+                combined_embeds = combined_embeds[0]
+            
+        anchor_embeds, pos_embeds = torch.split(combined_embeds, [pixel_values.shape[0], pixel_values_positive.shape[0]])
             
         # Determine patches per image to split the embeddings
         # image_grid_thw shape: [NumImages, 3] (T, H, W)
@@ -219,10 +221,11 @@ class Qwen3VLContrastiveWrapper(nn.Module):
             dummy_loss += self.logit_scale * 0.0
             contrastive_loss = dummy_loss
             
+        # Ensure losses are on the exact same device before addition (crucial for multi-GPU device_map configs)
+        if ce_loss is not None:
+            contrastive_loss = contrastive_loss.to(device=ce_loss.device)
+            
         total_loss = (ce_loss if ce_loss is not None else 0.0) + self.contrastive_weight * contrastive_loss
-        
-        # Prevent massive GPU VRAM spikes by releasing the hooked computation graph before backward()
-        self.vision_hook_output = None
         
         return {"loss": total_loss, "ce_loss": ce_loss, "contrastive_loss": contrastive_loss, "logits": outputs.logits}
 
