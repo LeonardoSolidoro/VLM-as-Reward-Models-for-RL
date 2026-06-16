@@ -51,10 +51,15 @@ class QwenContrastiveCollator:
 
 
 class AttentionalPooler(nn.Module):
-    def __init__(self, embed_dim, num_heads=8):
+    def __init__(self, embed_dim, num_heads=4):
         super().__init__()
-        # Initialize with standard deviation scaled by embed_dim to prevent attention logit explosion
-        self.query = nn.Parameter(torch.randn(1, 1, embed_dim) * 0.02)
+        # CRITICAL FIX: Do NOT scale down the query initialization!
+        # If the query is too small, the initial attention softmax is perfectly uniform (Mean Pooling).
+        # Mean Pooling averages the entire image, heavily dominating the output with the static background,
+        # which causes all 20 frames to look identical, resulting in 0.0 gradients (Dimensional Collapse).
+        # A standard normal initialization forces the attention to be sharp and random at step 0,
+        # perfectly shattering the symmetry and kickstarting the gradients!
+        self.query = nn.Parameter(torch.randn(1, 1, embed_dim))
         self.mha = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
 
     def forward(self, x):
@@ -98,6 +103,15 @@ class Qwen3VLContrastiveWrapper(nn.Module):
             raise AttributeError(f"CRITICAL: No vision encoder found anywhere in the model tree! Top level modules: {top_level}")
             
     def forward(self, input_ids=None, attention_mask=None, labels=None, pixel_values=None, image_grid_thw=None, pixel_values_positive=None, image_grid_thw_positive=None, frame_indices=None, trajectory_indices=None, **kwargs):
+        # CRITICAL BUGFIX: Gradient Checkpointing Silent Detachment!
+        # PyTorch's checkpointing function completely drops the backward pass if the inputs 
+        # don't have requires_grad=True. Because pixel_values come from the dataloader, they don't!
+        # This was silently blocking ALL gradients to the Vision LoRA adapters!
+        if pixel_values is not None and pixel_values.dtype.is_floating_point:
+            pixel_values.requires_grad_(True)
+        if pixel_values_positive is not None and pixel_values_positive.dtype.is_floating_point:
+            pixel_values_positive.requires_grad_(True)
+        
         # 1. Forward pass for the anchor (computes Cross Entropy loss for text progress)
         outputs = self.model(
             input_ids=input_ids,
@@ -176,6 +190,16 @@ class Qwen3VLContrastiveWrapper(nn.Module):
                 
             anchor_pooled = torch.cat(anchor_pooled, dim=0) # [NumImages, EmbedDim]
             pos_pooled = torch.cat(pos_pooled, dim=0) # [NumImages, EmbedDim]
+            
+            # --- CRITICAL FIX: The Highly-Correlated Data Trap ---
+            # Because 95% of your game image is a static background, the raw embeddings 
+            # are nearly identical. If we L2-normalize them directly, the massive static 
+            # background crushes the tiny temporal variance, causing InfoNCE to output 
+            # perfectly uniform probabilities (which causes the exact 2.558 loss flatline 
+            # and zero gradients). By subtracting the mean, we mathematically annihilate 
+            # the static background, forcing the loss to focus purely on the movement!
+            anchor_pooled = anchor_pooled - anchor_pooled.mean(dim=0, keepdim=True)
+            pos_pooled = pos_pooled - pos_pooled.mean(dim=0, keepdim=True)
             
             # Normalize features
             anchor_pooled = F.normalize(anchor_pooled, dim=-1)
@@ -333,10 +357,9 @@ def add_lora(model, args, use_qlora):
     if use_qlora:
         model = prepare_model_for_kbit_training(model)
 
-    # We now apply LoRA to the vision encoder as well, per requirements.
-    # Target modules for LLM (q_proj, k_proj, v_proj, o_proj) and Vision Encoder (usually contains qkv, proj, etc.)
-    # We will broadly target typical attention projections in both.
-    target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "qkv", "proj"]
+    # We use "all-linear" to guarantee that PEFT catches every linear layer in both
+    # the LLM and the Vision Encoder, regardless of architecture-specific naming conventions.
+    target_modules = "all-linear"
 
     lora_config = LoraConfig(
         r=args.lora_r,
