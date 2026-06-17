@@ -128,8 +128,8 @@ def main():
     repo_root = Path(__file__).resolve().parents[1]
     config = load_config(repo_root)
     seed = int(config.get("seed", 42))
-    data_root = repo_root / config.get("data_root", "data") / "moving"
-    output_root = repo_root / "finetune_data" / "moving"
+    data_root = repo_root / config.get("data_root", "data") / "moving_mounted"
+    output_root = repo_root / "finetune_data" / "moving_mounted"
     output_root.mkdir(exist_ok=True)
 
     task_descriptions = {
