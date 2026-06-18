@@ -385,9 +385,9 @@ def parse_args():
     parser.add_argument("--gradient-accumulation-steps", type=int, default=1)
     parser.add_argument("--max-steps", type=int, default=-1)
     parser.add_argument("--save-strategy", type=str, default="epoch", choices=["no", "epoch", "steps"])
-    parser.add_argument("--save-steps", type=int, default=500)
+    parser.add_argument("--save-steps", type=int, default=50)
     parser.add_argument("--eval-strategy", type=str, default="epoch", choices=["no", "epoch", "steps"])
-    parser.add_argument("--eval-steps", type=int, default=500)
+    parser.add_argument("--eval-steps", type=int, default=50)
     parser.add_argument("--dataloader-num-workers", type=int, default=4)
     parser.add_argument("--lora-r", type=int, default=16)
     parser.add_argument("--lora-alpha", type=int, default=32)
@@ -451,6 +451,7 @@ def main():
         fp16=torch.cuda.is_available() and not args.bf16,
         gradient_checkpointing=True,
         remove_unused_columns=False,
+        report_to=["wandb"],
     )
 
     trainer = ContrastiveTrainer(
