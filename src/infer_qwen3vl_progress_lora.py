@@ -75,8 +75,7 @@ def main():
 
     print(f"Loading base model: {args.model_id}")
     model_kwargs = {
-        "device_map": "auto",
-        "attn_implementation": "flash_attention_2"
+        "device_map": "auto"
     }
     if torch.cuda.is_available():
         model_kwargs["dtype"] = dtype

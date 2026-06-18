@@ -76,4 +76,4 @@ experiment_in_context_examples: 2
 # Data generation settings
 num_rollouts: 500
 num_frames: 20
-enable_moving_camera: false
+enable_moving_camera: true

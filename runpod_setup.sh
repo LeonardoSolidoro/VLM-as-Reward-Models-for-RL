@@ -71,10 +71,6 @@ else
     echo "Then manually run: pip install -r requirements.txt"
 fi
 
-echo "=================================================="
-echo "4. Installing Pre-compiled Flash Attention"
-echo "=================================================="
-pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3.post1/flash_attn-2.8.3.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 
 echo "=================================================="
 echo "RunPod Setup Complete!"
