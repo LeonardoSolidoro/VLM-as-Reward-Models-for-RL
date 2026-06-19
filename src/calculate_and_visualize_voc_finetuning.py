@@ -63,10 +63,15 @@ def main():
         data = json.load(f)
 
     vocs = []
+    all_preds = []
+    all_targets = []
 
     for item in data:
         pred = item["generated_percentages"]
         target = item["target_percentages"]
+
+        all_preds.extend(pred)
+        all_targets.extend(target)
 
         voc = compute_voc(pred, target)
 
@@ -100,6 +105,33 @@ def main():
     print(f"Median VOC:        {median_voc:.4f}")
     print(f"Std VOC:           {std_voc:.4f}")
     print(f"Saved metrics to:  {metrics_path}")
+
+    # Calculate accuracy metrics
+    pred_arr = np.array(all_preds)
+    target_arr = np.array(all_targets)
+    
+    mae = float(np.mean(np.abs(pred_arr - target_arr)))
+    rmse = float(np.sqrt(np.mean((pred_arr - target_arr)**2)))
+    acc_5 = float(np.mean(np.abs(pred_arr - target_arr) <= 5) * 100)
+    
+    accuracy_metrics = {
+        "num_frames": len(pred_arr),
+        "mae": mae,
+        "rmse": rmse,
+        "accuracy_within_5_percent": acc_5,
+    }
+    
+    accuracy_metrics_path = os.path.join(args.output_dir, "accuracy_metrics.json")
+    with open(accuracy_metrics_path, "w") as f:
+        json.dump(accuracy_metrics, f, indent=2)
+
+    print("\nAccuracy Metrics")
+    print("-" * 40)
+    print(f"Total frames:      {len(pred_arr)}")
+    print(f"MAE:               {mae:.2f}%")
+    print(f"RMSE:              {rmse:.2f}%")
+    print(f"Accuracy (+/- 5%): {acc_5:.2f}%")
+    print(f"Saved metrics to:  {accuracy_metrics_path}")
 
     # VOC histogram only
     plt.figure(figsize=(8, 5))
