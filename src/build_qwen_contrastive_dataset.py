@@ -144,9 +144,9 @@ def main():
     seed = int(config["seed"])
 
     data_root_static = repo_root / config["data_root"] / "static"
-    data_root_moving = repo_root / config["data_root"] / "moving"
+    data_root_moving = repo_root / config["data_root"] / "moving_mounted"
     
-    output_root = repo_root / "finetune_data_contrastive"
+    output_root = repo_root / "finetune_data_contrastive" / "moving_mounted"
     output_root.mkdir(exist_ok=True)
 
     task_descriptions = {
