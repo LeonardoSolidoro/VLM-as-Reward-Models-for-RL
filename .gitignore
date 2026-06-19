@@ -11,6 +11,7 @@ finetuning_output/Qwen3-VL-8B-4bit-Contrastive-Overfitting-fromScratch/lora_weig
 finetuning_output/Qwen3-VL-8B-4bit-Contrastive/lora_weights/
 finetuning_output/Qwen3-VL-8B-4bit-Only-Contrastive-Overfitting/lora_weights/
 finetuning_output/Qwen3-VL-8B-4bit-Only-Contrastive/lora_weights/
+finetuning_output/Qwen3-VL-8B-4bit-Real-3Epochs-Moving-From-Scratch/lora_weights
 h5/
 Qwen3-VL-example/
 VLM_RM/
