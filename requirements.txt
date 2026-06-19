@@ -1,5 +1,5 @@
-# PyTorch Nightly CUDA 12.8
---extra-index-url https://download.pytorch.org/whl/nightly/cu128
+# PyTorch Stable CUDA 12.4 (Compatible with RunPod driver 12080)
+--extra-index-url https://download.pytorch.org/whl/cu124
 torch
 torchvision
 # Core project utilities
