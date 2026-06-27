@@ -1,13 +1,30 @@
+# PyTorch Stable CUDA 12.4 (Compatible with RunPod driver 12080)
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch
+torchvision
+# Core project utilities
+numpy<2.0
+PyYAML
+Pillow
+scipy
+matplotlib
+
+# Async VLM API scripts
 aiohttp
+certifi
+python-dotenv
+
+# Trajectory generation / robotics data
+opencv-python-headless
 gymnasium
 h5py
-mani_skill
-matplotlib
-metaworld
-numpy
-opencv-python
-python-dotenv
-pyyaml
+mani-skill
 sapien
-scipy
-torch
+
+# Qwen3-VL LoRA / QLoRA finetuning
+transformers>=4.57.0
+accelerate
+peft
+bitsandbytes
+safetensors
+tokenizers

@@ -1,12 +1,11 @@
 # Data Path Settings
-data_root: "data/maniskill3_final"
-output_root: "output/maniskill3_rewards"
+data_root: "data/"
+output_root: "output/"
 seed: 42
 
 # Collection Settings
-num_rollouts: 50
-num_frames: 20
-enable_moving_camera: True
+rollouts_per_setting: 10
+camera_names: ["topview", "corner", "corner2"] # Options: 'topview' 'corner', 'corner2', 'corner3', 'behindGripper', 'gripperPOV'
 levels:
   - "expert"
   - "partial"
@@ -14,24 +13,12 @@ levels:
 
 # Task Descriptions
 tasks:
-  drawer-open-v3:
-    description: "Control the Sawyer robot arm to approach the drawer handle, grasp it, and pull the drawer completely open towards the robot."
-    policy: "SawyerDrawerOpenV3Policy"
-  button-press-v3:
-    description: "Control the Sawyer robot arm to move its gripper directly above the red button and press it down fully."
-    policy: "SawyerButtonPressV3Policy"
-  peg-insert-side-v3:
-    description: "Control the Sawyer robot arm to pick up the long cylindrical peg and insert it horizontally into the circular hole on the side of the box."
-    policy: "SawyerPegInsertionSideV3Policy"
-  pick-place-v3:
-    description: "Control the Sawyer robot arm to grasp the small puck/block on the table, lift it up, and place it precisely onto the target goal location."
-    policy: "SawyerPickPlaceV3Policy"
   PegInsertionSide-v1:
-    description: "Pick up the peg and insert it into the side hole."
+    description: "Pick up the peg and insert it into the side hole of the box."
   PickCube-v1:
     description: "Grasp the red cube and move it to the green target goal position."
   PushCube-v1:
-    description: "Push the cube to the red-and-white circular goal region in front of it."
+    description: "Push the cube to the red-and-white circular goal region."
 
 # Prompt Template
 reward_prompt_template: |
@@ -58,10 +45,35 @@ reward_prompt_template: |
   Please provide your predictions for the following frames:
   {frames_list}
 
-# Experiment Settings
-experiment_name: "exp1.2.maniskill3_final-qwen3-vl-8b-instruct"
+finetuning_prompt_template: |
+  You are an expert roboticist tasked to predict task completion
+  percentages for frames of a robot for the task of {task_description}.
+  The task completion percentages are between 0 and 100, where 100
+  corresponds to full task completion. Note that these frames are
+  in random order, so please pay attention to the individual frames
+  when reasoning about task completion percentage.
+
+  Initial robot scene: [IMG]
+  In the initial robot scene, the task completion percentage is 0.
+
+  Now, for the task of {task_description}, output the task completion
+  percentage for the following frames that are presented in random
+  order. For each frame, you must format your response exactly as follows, ending with a score enclosed in xml tags:
+  Frame X:
+  Task Completion Percentage: <score>XX%</score>
+  
+  Please provide your predictions for the following frames:
+  {frames_list}
+
+# Experiment settings
+experiment_name: "Gemini-3.1-Flash-Lite-2-Shot-20-Frames"
 views: ["topview"]
-frames_in_context: 6
+frames_in_context: 20
 experiment_levels: ["expert"]
-experiment_shuffle_frames: True
-experiment_in_context_examples: 1
+experiment_shuffle_frames: true
+experiment_in_context_examples: 2
+
+# Data generation settings
+num_rollouts: 500
+num_frames: 20
+enable_moving_camera: true
