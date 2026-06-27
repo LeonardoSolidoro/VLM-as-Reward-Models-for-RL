@@ -207,34 +207,41 @@ def parse_percentages(text):
         values.append(value)
     return values
 
-def check_vlm_diagnostics(percentages, episode_idx=""):
-    # Convert to 0-100 scale for intuitive printing and logic
-    pcts = [p * 100 for p in percentages]
-    if len(pcts) < 2:
+def check_vlm_diagnostics(percentages, shuffled_indices, ep_idx=""):
+    # Align percentages with their actual episode steps and sort chronologically
+    known_pairs = sorted(zip(shuffled_indices, percentages), key=lambda x: x[0])
+    chrono_steps = [x[0] for x in known_pairs]
+    chrono_pcts = [x[1] * 100 for x in known_pairs]
+
+    if len(chrono_pcts) < 2:
         return
     
-    for i in range(1, len(pcts)):
-        prev = pcts[i-1]
-        curr = pcts[i]
+    prefix = f"[VLM Diagnostic - Ep {ep_idx}]"
+    
+    for i in range(1, len(chrono_pcts)):
+        prev = chrono_pcts[i-1]
+        curr = chrono_pcts[i]
+        prev_step = chrono_steps[i-1]
+        curr_step = chrono_steps[i]
     
         if prev > 20 and curr < 5:
-            print(f"[VLM Diagnostic] WARNING: Reward plummeted from {prev:.1f}% to {curr:.1f}% at step {episode_idx}. Possible occlusion!")
+            print(f"{prefix} WARNING: Reward plummeted from {prev:.1f}% (step {prev_step}) to {curr:.1f}% (step {curr_step}). Possible occlusion!")
             continue 
         
         if abs(curr - prev) > 20:
-            print(f"[VLM Diagnostic] WARNING: Massive reward jump ({abs(curr-prev):.1f}%) from {prev:.1f}% to {curr:.1f}% at step {episode_idx}. VLM is possibly hallucinating!")
+            print(f"{prefix} WARNING: Massive reward jump ({abs(curr-prev):.1f}%) from {prev:.1f}% (step {prev_step}) to {curr:.1f}% (step {curr_step}). VLM is possibly hallucinating!")
         
     consecutive_identical = 1
-    for i in range(1, len(pcts)):
-        if pcts[i] == pcts[i-1] and pcts[i] > 0:
+    for i in range(1, len(chrono_pcts)):
+        if chrono_pcts[i] == chrono_pcts[i-1] and chrono_pcts[i] > 0:
             consecutive_identical += 1
             if consecutive_identical == 3:
-                print(f"[VLM Diagnostic] WARNING: VLM returned the EXACT same score ({pcts[i]:.1f}%) for 3+ consecutive frames at step {episode_idx}. It might be failing to detect small robotic arm movements.")
+                print(f"{prefix} WARNING: VLM returned the EXACT same score ({chrono_pcts[i]:.1f}%) for 3+ consecutive frames (ending at step {chrono_steps[i]}). It might be failing to detect small robotic arm movements.")
                 break 
         else:
             consecutive_identical = 1
 
-def annotate_batch(episodes_data, model, processor, task_description, prompt_template, device, context_len=20, gamma=0.99, global_step=""):
+def annotate_batch(episodes_data, model, processor, task_description, prompt_template, device, context_len=20, gamma=0.99, base_episode_idx=0):
     """
     Synchronously annotates a batch of episodes using the VLM, computes PBRS rewards, 
     and returns a flattened list of (state, action, reward, next_state, done) transitions.
@@ -249,8 +256,7 @@ def annotate_batch(episodes_data, model, processor, task_description, prompt_tem
         if n_states <= context_len:
             remaining_indices = list(range(1, n_states))
         else:
-            remaining_indices = random.sample(range(1, n_states), context_len - 1)
-            remaining_indices.sort()
+            remaining_indices = np.round(np.linspace(1, n_states - 1, context_len - 1)).astype(int).tolist()
         
         remaining_images = []
         for idx in remaining_indices:
@@ -330,7 +336,7 @@ def annotate_batch(episodes_data, model, processor, task_description, prompt_tem
 
     all_annotated_transitions = []
 
-    for text, meta in zip(generated_texts, batch_metadata):
+    for batch_idx, (text, meta) in enumerate(zip(generated_texts, batch_metadata)):
         percentages = parse_percentages(text)
         shuffled_indices = meta["shuffled_indices"]
         episode_data = meta["episode_data"]
@@ -342,7 +348,12 @@ def annotate_batch(episodes_data, model, processor, task_description, prompt_tem
                 percentages.append(0.0)
             percentages = percentages[:len(shuffled_indices)]
 
-        check_vlm_diagnostics(percentages, episode_idx=global_step)
+        current_ep_idx = base_episode_idx + batch_idx
+        check_vlm_diagnostics(
+            percentages, 
+            shuffled_indices=shuffled_indices, 
+            ep_idx=current_ep_idx
+        )
 
         progress = [None] * n_states
         for idx, prog in zip(shuffled_indices, percentages):
@@ -385,10 +396,48 @@ def annotate_batch(episodes_data, model, processor, task_description, prompt_tem
 # MAIN TRAINING LOOP
 # ==============================================================================
 
-def get_state_dict(env, obs):
+def get_task_camera_target(env, task):
+    import numpy as np
+    if task == "PickCube-v1":
+        obj = env.cube.pose.p[0].cpu().numpy()
+        goal = env.goal_site.pose.p[0].cpu().numpy()
+        return 0.6 * obj + 0.4 * goal
+    elif task == "PushCube-v1":
+        obj = env.obj.pose.p[0].cpu().numpy()
+        goal = env.goal_region.pose.p[0].cpu().numpy()
+        return 0.5 * obj + 0.5 * goal
+    elif task == "PegInsertionSide-v1":
+        obj = env.peg.pose.p[0].cpu().numpy()
+        goal = env.goal_pose.p[0].cpu().numpy()
+        return 0.5 * obj + 0.5 * goal
+    return np.array([0.0, 0.0, 0.1])
+
+def update_wrist_follow_camera(env, task):
+    import numpy as np
+    from mani_skill.utils import sapien_utils
+    wrist_link_name = "panda_hand"
+    try:
+        wrist_link = env.agent.robot.links_map[wrist_link_name]
+        wrist_position = wrist_link.pose.p[0].cpu().numpy()
+
+        if task == "PickCube-v1":
+            eye = wrist_position + np.array([0.10, -0.10, 0.28])
+        else:
+            eye = wrist_position + np.array([0.065, -0.065, 0.25])
+
+        target = get_task_camera_target(env, task)
+        pose = sapien_utils.look_at(eye=eye, target=target)
+        cam = env.scene.human_render_cameras["render_camera"].camera
+        cam.set_local_pose(pose.sp)
+    except Exception as e:
+        pass # Fail gracefully if camera or robot not found
+
+def get_state_dict(env, obs, task, use_moving_mounted_camera=False):
     if isinstance(obs, dict) and "image" in obs:
         return obs
     try:
+        if use_moving_mounted_camera:
+            update_wrist_follow_camera(env.unwrapped, task)
         if hasattr(env.unwrapped, "render_rgb_array"):
             image = env.unwrapped.render_rgb_array(camera_name="render_camera")
         else:
@@ -416,11 +465,13 @@ def main():
 
     # VLM
     parser.add_argument("--use-env-rewards", action="store_true", help="Bypass VLM and use native env dense rewards for debugging")
+    parser.add_argument("--moving-mounted-camera", action="store_true", help="Enable the wrist-follow camera (moving mounted) instead of the default static camera")
     parser.add_argument("--model-id", type=str, default="Qwen/Qwen3-VL-8B-Instruct")
     parser.add_argument("--adapter-dir", type=str, default="outputs/qwen3vl-progress-lora-tiny")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--vlm-context-len", type=int, default=20)
     parser.add_argument("--vlm-batch-size", type=int, default=1) # Max 4, less is best for stability!
+    parser.add_argument("--4bit-quant", dest="quant_4bit", action="store_true", help="Enable 4-bit quantization for the VLM")
 
     # CrossQ & SAC Hyperparameters
     parser.add_argument("--actor-hidden-dim", type=int, default=256)
@@ -442,6 +493,7 @@ def main():
         "render_mode": "rgb_array",
         "sim_backend": "physx_cpu",
         "render_backend": "sapien_cpu",
+        "reward_mode": "sparse",
     }
     if args.use_env_rewards:
         env_kwargs["reward_mode"] = "normalized_dense"
@@ -457,11 +509,23 @@ def main():
     if not args.use_env_rewards:
         print("Loading VLM...")
         processor = AutoProcessor.from_pretrained(args.model_id)
+        
+        model_kwargs = {"device_map": args.device}
+        if args.quant_4bit:
+            model_kwargs["quantization_config"] = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.float16
+            )
+        else:
+            model_kwargs["torch_dtype"] = torch.float16
+            
         model = AutoModelForImageTextToText.from_pretrained(
-            args.model_id, torch_dtype=torch.float16, device_map=args.device
+            args.model_id, **model_kwargs
         )
         if args.adapter_dir:
-            model = PeftModel.from_pretrained(model, args.adapter_dir).merge_and_unload()
+            model = PeftModel.from_pretrained(model, args.adapter_dir)
+            if not args.quant_4bit:
+                model = model.merge_and_unload()
         model.eval()
         processor.tokenizer.padding_side = 'left'
     
@@ -489,12 +553,13 @@ def main():
 
     # 4. Training Loop
     obs, _ = env.reset()
-    state_dict = get_state_dict(env, obs)
+    state_dict = get_state_dict(env, obs, args.task, args.moving_mounted_camera)
     episode_data = []
     unannotated_episodes = []
     
     global_step = 0
     total_training_updates = 0
+    total_episodes_completed = 0
     
     best_success_rate = 0.0
     consecutive_successes = 0
@@ -521,7 +586,7 @@ def main():
         if hasattr(reward, "cpu"): reward = reward.cpu().item()
         if hasattr(terminated, "cpu"): terminated = terminated.cpu().item()
         
-        next_state_dict = get_state_dict(env, next_obs)
+        next_state_dict = get_state_dict(env, next_obs, args.task, args.moving_mounted_camera)
         
         flat_state = np.array(state_dict["state"] if isinstance(state_dict["state"], np.ndarray) else state_dict["state"].cpu().numpy()).flatten()
         flat_next_state = np.array(next_state_dict["state"] if isinstance(next_state_dict["state"], np.ndarray) else next_state_dict["state"].cpu().numpy()).flatten()
@@ -540,12 +605,13 @@ def main():
 
         # --- EPISODE END: ANNOTATE AND TRAIN ---
         if done:
+            total_episodes_completed += 1
             unannotated_episodes.append(episode_data)
             episode_data = []
             obs, _ = env.reset()
-            state_dict = get_state_dict(env, obs)
+            state_dict = get_state_dict(env, obs, args.task, args.moving_mounted_camera)
 
-            if len(unannotated_episodes) >= args.vlm_batch_size or (args.use_env_rewards and len(unannotated_episodes) > 0):
+            if len(unannotated_episodes) >= args.vlm_batch_size:
                 if args.use_env_rewards:
                     annotated_transitions = []
                     for ep in unannotated_episodes:
@@ -555,7 +621,8 @@ def main():
                     # Annotate with VLM
                     annotated_transitions = annotate_batch(
                         unannotated_episodes, model, processor, task_description, prompt_template, args.device, 
-                        context_len=args.vlm_context_len, gamma=args.gamma, global_step=global_step
+                        context_len=args.vlm_context_len, gamma=args.gamma,
+                        base_episode_idx=(total_episodes_completed - len(unannotated_episodes))
                     )
                 
                 # Push to replay buffer
@@ -637,7 +704,7 @@ def main():
                             alpha_loss.backward()
                             alpha_optimizer.step()
                         
-                        if total_training_updates % 5000 == 0:
+                        if total_training_updates % args.learning_starts == 0:
                             print(f"Buffer Stats -> Annotated Transitions: {len(buffer)} | Total Generated: {global_step}")
                             print(f"[Learner Debug] Update {total_training_updates} | Alpha: {alpha.item():.3f} | Avg Single-Step Reward in Batch: {np.mean(b_rewards):.3f}")
                         

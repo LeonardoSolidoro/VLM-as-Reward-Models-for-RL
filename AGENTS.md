@@ -3,7 +3,7 @@
 This file contains the core directives, environment constraints, and coding standards for the AI agent working on this project. 
 
 ## 1. Environment & Dependency Management
-- **Target Environment:** All code execution and package installation must occur within the Miniconda environment named `dl_project`.
+- **Target Environment:** All code execution and package installation must occur within the Miniconda environment named `VLM_RM`.
 - **Primary Package Manager:** Use `pip` for dependency management.
 - **Dependency Tracking:** Update `environment.yml` or `requirements.txt` implicitly when adding new dependencies to maintain environment reproducibility.
 
