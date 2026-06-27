@@ -1,0 +1,180 @@
+{
+    "drawer-open-v3_eval": {
+        "raw_scores": [
+            {
+                "rollout": "rollout_1",
+                "voc": 0.7999999999999999
+            },
+            {
+                "rollout": "rollout_2",
+                "voc": 0.7999999999999999
+            },
+            {
+                "rollout": "rollout_3",
+                "voc": 0.7745966692414834
+            },
+            {
+                "rollout": "rollout_4",
+                "voc": 1.0
+            },
+            {
+                "rollout": "rollout_5",
+                "voc": 1.0
+            },
+            {
+                "rollout": "rollout_6",
+                "voc": 0.7999999999999999
+            },
+            {
+                "rollout": "rollout_7",
+                "voc": 1.0
+            },
+            {
+                "rollout": "rollout_8",
+                "voc": 0.9486832980505139
+            },
+            {
+                "rollout": "rollout_9",
+                "voc": 1.0
+            }
+        ],
+        "avg_voc": 0.902586663032444,
+        "median_voc": 0.9486832980505139,
+        "num_rollouts": 9
+    },
+    "button-press-v3_eval": {
+        "raw_scores": [
+            {
+                "rollout": "rollout_1",
+                "voc": 1.0
+            },
+            {
+                "rollout": "rollout_2",
+                "voc": 0.7745966692414834
+            },
+            {
+                "rollout": "rollout_3",
+                "voc": 1.0
+            },
+            {
+                "rollout": "rollout_4",
+                "voc": 1.0
+            },
+            {
+                "rollout": "rollout_5",
+                "voc": 1.0
+            },
+            {
+                "rollout": "rollout_6",
+                "voc": 0.6000000000000001
+            },
+            {
+                "rollout": "rollout_7",
+                "voc": 0.7999999999999999
+            },
+            {
+                "rollout": "rollout_8",
+                "voc": 0.19999999999999998
+            },
+            {
+                "rollout": "rollout_9",
+                "voc": 0.9486832980505139
+            }
+        ],
+        "avg_voc": 0.8136977741435554,
+        "median_voc": 0.9486832980505139,
+        "num_rollouts": 9
+    },
+    "peg-insert-side-v3_eval": {
+        "raw_scores": [
+            {
+                "rollout": "rollout_1",
+                "voc": 1.0
+            },
+            {
+                "rollout": "rollout_2",
+                "voc": 0.7999999999999999
+            },
+            {
+                "rollout": "rollout_3",
+                "voc": 0.19999999999999998
+            },
+            {
+                "rollout": "rollout_4",
+                "voc": 0.6000000000000001
+            },
+            {
+                "rollout": "rollout_5",
+                "voc": 1.0
+            },
+            {
+                "rollout": "rollout_6",
+                "voc": 0.39999999999999997
+            },
+            {
+                "rollout": "rollout_7",
+                "voc": 0.7999999999999999
+            },
+            {
+                "rollout": "rollout_8",
+                "voc": 0.19999999999999998
+            },
+            {
+                "rollout": "rollout_9",
+                "voc": 0.39999999999999997
+            }
+        ],
+        "avg_voc": 0.6000000000000001,
+        "median_voc": 0.6000000000000001,
+        "num_rollouts": 9
+    },
+    "pick-place-v3_eval": {
+        "raw_scores": [
+            {
+                "rollout": "rollout_1",
+                "voc": 1.0
+            },
+            {
+                "rollout": "rollout_2",
+                "voc": 1.0
+            },
+            {
+                "rollout": "rollout_3",
+                "voc": 0.632455532033676
+            },
+            {
+                "rollout": "rollout_4",
+                "voc": 1.0
+            },
+            {
+                "rollout": "rollout_5",
+                "voc": 0.7999999999999999
+            },
+            {
+                "rollout": "rollout_6",
+                "voc": 0.7745966692414834
+            },
+            {
+                "rollout": "rollout_7",
+                "voc": 0.7999999999999999
+            },
+            {
+                "rollout": "rollout_8",
+                "voc": 0.7999999999999999
+            },
+            {
+                "rollout": "rollout_9",
+                "voc": 0.39999999999999997
+            }
+        ],
+        "avg_voc": 0.8007835779194621,
+        "median_voc": 0.7999999999999999,
+        "num_rollouts": 9
+    },
+    "global_metrics": {
+        "avg_voc": 0.7792670037738653,
+        "median_voc": 0.7999999999999999,
+        "std_voc": 0.24825757937712875,
+        "num_rollouts": 36
+    }
+}
