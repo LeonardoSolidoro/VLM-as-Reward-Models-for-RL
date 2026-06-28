@@ -5,7 +5,7 @@ import yaml
 import asyncio
 import aiohttp
 import random
-from reward_function import get_reward_score
+from vlm_api import get_reward_score
 from utilities import set_all_seeds
 from prepare_in_context import prepare_in_context_example
 

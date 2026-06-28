@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 from collect_rewards import load_in_context_example, TASK_DESCRIPTIONS
 from prepare_in_context import prepare_in_context_example
-from reward_function import encode_image
+from vlm_api import encode_image
 
 load_dotenv()
 

@@ -8,6 +8,7 @@ PyYAML
 Pillow
 scipy
 matplotlib
+tqdm
 
 # Async VLM API scripts
 aiohttp
