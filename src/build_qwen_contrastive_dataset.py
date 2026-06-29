@@ -1,4 +1,5 @@
 import json
+import math
 import random
 from pathlib import Path
 import yaml
@@ -24,6 +25,15 @@ def rollout_number(path):
 
 def rel_path(path, repo_root):
     return path.relative_to(repo_root).as_posix()
+
+def parse_reward(reward: float) -> int:
+    """Parses environment GT float reward into a 0-100 percentage.
+    Very small noise values < 0.001 are floored to 0. Otherwise it rounds up.
+    Handles floats, scientific notation natively parsed by json/float()."""
+    val = float(reward)
+    if val < 0.001:
+        return 0
+    return min(100, int(math.ceil(val * 100)))
 
 def find_rollouts(data_root, task):
     task_root = data_root / task / LEVEL
@@ -56,6 +66,18 @@ def check_rollout(rollout_path_static, rollout_path_moving, view_name):
     if missing_moving:
         return False, f"missing {len(missing_moving)} expected moving frame image(s)"
 
+    rewards_path = rollout_path_static / "rewards.json"
+    if not rewards_path.exists():
+        return False, "missing rewards.json"
+        
+    try:
+        with open(rewards_path, "r") as f:
+            rewards = json.load(f)
+        if len(rewards) != NUM_FRAMES:
+            return False, f"rewards.json has {len(rewards)} entries, expected {NUM_FRAMES}"
+    except Exception as e:
+        return False, f"failed to parse rewards.json: {e}"
+
     return True, ""
 
 def build_record(task, task_description, rollout_path_static, rollout_path_moving, repo_root, seed, view_name, primary_view_type):
@@ -78,7 +100,10 @@ def build_record(task, task_description, rollout_path_static, rollout_path_movin
         images_positive = images_moving
         initial_image = rel_path(frame_path(rollout_path_static, view_name, 0), repo_root)
         
-    progress = [round(idx / (NUM_FRAMES - 1) * 100) for idx in frame_order]
+    with open(rollout_path_static / "rewards.json", "r") as f:
+        rewards = json.load(f)
+        
+    progress = [parse_reward(rewards[idx]) for idx in frame_order]
     rollout_idx = rollout_number(rollout_path_static)
 
     return {
@@ -122,9 +147,8 @@ def validate_records(rows, repo_root):
             if not (repo_root / pos_image_path).exists():
                 raise FileNotFoundError(f"Missing positive image path in {row['id']}: {pos_image_path}")
 
-            expected_progress = round(frame_idx / (NUM_FRAMES - 1) * 100)
-            if progress != expected_progress:
-                raise ValueError(f"Bad progress in {row['id']}: got {progress}, expected {expected_progress}")
+            if not isinstance(progress, int) or not (0 <= progress <= 100):
+                raise ValueError(f"Bad progress in {row['id']}: got {progress}, must be int between 0 and 100")
 
 def validate_disjoint(split_rows):
     split_paths = {}

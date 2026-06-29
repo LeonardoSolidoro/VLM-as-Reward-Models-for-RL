@@ -241,7 +241,7 @@ def check_vlm_diagnostics(percentages, shuffled_indices, ep_idx=""):
         else:
             consecutive_identical = 1
 
-def annotate_batch(episodes_data, model, processor, task_description, prompt_template, device, context_len=20, gamma=0.99, base_episode_idx=0):
+def annotate_batch(episodes_data, model, processor, task_description, prompt_template, device, context_len=20, base_episode_idx=0):
     """
     Synchronously annotates a batch of episodes using the VLM, computes PBRS rewards, 
     and returns a flattened list of (state, action, reward, next_state, done) transitions.
@@ -378,12 +378,9 @@ def annotate_batch(episodes_data, model, processor, task_description, prompt_tem
 
         for t_idx in range(len(episode_data)):
             item = episode_data[t_idx]
-            task_reward = item["task_reward"]
-        
-            if item["done"]:
-                r_t = task_reward - progress[t_idx]
-            else:
-                r_t = task_reward + gamma * progress[t_idx + 1] - progress[t_idx]
+            
+            # Difference Reward
+            r_t = progress[t_idx + 1] - progress[t_idx]
             
             all_annotated_transitions.append((
                 item["state"], item["action"], r_t, item["next_state"], item["done"]
@@ -565,13 +562,22 @@ def main():
     consecutive_successes = 0
     last_eval_step = 0
     
+    saved_ckpt_10_reward = False
+    saved_ckpt_20_reward = False
+    saved_ckpt_50_success = False
+    
     print("Starting Synchronous CleanRL CrossQ Training...")
+    random_action_momentum = env.action_space.sample()
+    target_action = env.action_space.sample()
     
     while global_step < args.max_steps:
         # --- ROLLOUT ---
         # Random exploration for initial phase
         if global_step < args.learning_starts:
-            action = env.action_space.sample()
+            if global_step % 10 == 0:
+                target_action = env.action_space.sample()
+            random_action_momentum = 0.90 * random_action_momentum + 0.10 * target_action
+            action = np.clip(random_action_momentum, env.action_space.low, env.action_space.high)
         else:
             flat_state = state_dict["state"]
             if hasattr(flat_state, "cpu"): flat_state = flat_state.cpu().numpy()
@@ -615,13 +621,18 @@ def main():
                 if args.use_env_rewards:
                     annotated_transitions = []
                     for ep in unannotated_episodes:
-                        annotated_transitions.extend([(item["state"], item["action"], item["task_reward"], item["next_state"], item["done"]) for item in ep])
+                        prev_phi = 0.0
+                        for item in ep:
+                            phi_next = item["task_reward"]
+                            diff_reward = phi_next - prev_phi
+                            annotated_transitions.append((item["state"], item["action"], diff_reward, item["next_state"], item["done"]))
+                            prev_phi = phi_next
                 else:
                     print(f"Batch full! Annotating {len(unannotated_episodes)} episodes at step {global_step}...")
                     # Annotate with VLM
                     annotated_transitions = annotate_batch(
                         unannotated_episodes, model, processor, task_description, prompt_template, args.device, 
-                        context_len=args.vlm_context_len, gamma=args.gamma,
+                        context_len=args.vlm_context_len,
                         base_episode_idx=(total_episodes_completed - len(unannotated_episodes))
                     )
                 
@@ -718,29 +729,63 @@ def main():
                 
                 os.makedirs(args.save_dir, exist_ok=True)
                 
+                checkpoint_dict = {
+                    'actor_state_dict': actor.state_dict(),
+                    'critic_state_dict': critic.state_dict(),
+                    'log_alpha': log_alpha,
+                    'actor_optimizer_state_dict': actor_optimizer.state_dict(),
+                    'critic_optimizer_state_dict': critic_optimizer.state_dict(),
+                    'alpha_optimizer_state_dict': alpha_optimizer.state_dict(),
+                    'global_step': global_step,
+                    'avg_reward': avg_reward,
+                    'success_rate': success_rate
+                }
+                
+                if avg_reward > 10.0 and not saved_ckpt_10_reward:
+                    saved_ckpt_10_reward = True
+                    print("Agent reached > 10 reward! Saving checkpoint...")
+                    torch.save(checkpoint_dict, f"{args.save_dir}/agent_reward_10.pth")
+
+                if avg_reward > 20.0 and not saved_ckpt_20_reward:
+                    saved_ckpt_20_reward = True
+                    print("Agent reached > 20 reward! Saving checkpoint...")
+                    torch.save(checkpoint_dict, f"{args.save_dir}/agent_reward_20.pth")
+
+                if success_rate >= 0.50 and not saved_ckpt_50_success:
+                    saved_ckpt_50_success = True
+                    print("Agent reached 50% success! Saving checkpoint...")
+                    torch.save(checkpoint_dict, f"{args.save_dir}/agent_success_50.pth")
+                
                 if success_rate > best_success_rate:
                     best_success_rate = success_rate
                     print("New best success rate! Saving agent...")
-                    torch.save({
-                        'actor_state_dict': actor.state_dict(),
-                        'critic_state_dict': critic.state_dict(),
-                        'log_alpha': log_alpha
-                    }, f"{args.save_dir}/best_agent.pth")
+                    torch.save(checkpoint_dict, f"{args.save_dir}/best_agent.pth")
                     
                 if success_rate >= args.target_success_rate:
                     consecutive_successes += 1
                     if consecutive_successes >= 2:
                         print(f"\nConvergence Reached! Success rate >= {args.target_success_rate*100}% for 2 consecutive evaluations.")
-                        torch.save({
-                            'actor_state_dict': actor.state_dict(),
-                            'critic_state_dict': critic.state_dict(),
-                            'log_alpha': log_alpha
-                        }, f"{args.save_dir}/converged_agent.pth")
+                        torch.save(checkpoint_dict, f"{args.save_dir}/converged_agent.pth")
                         break
                 else:
                     consecutive_successes = 0
                     
                 last_eval_step = global_step
+
+    print("Training finished! Saving final checkpoint...")
+    final_checkpoint_dict = {
+        'actor_state_dict': actor.state_dict(),
+        'critic_state_dict': critic.state_dict(),
+        'log_alpha': log_alpha,
+        'actor_optimizer_state_dict': actor_optimizer.state_dict(),
+        'critic_optimizer_state_dict': critic_optimizer.state_dict(),
+        'alpha_optimizer_state_dict': alpha_optimizer.state_dict(),
+        'global_step': global_step,
+        'avg_reward': avg_reward if 'avg_reward' in locals() else 0.0,
+        'success_rate': success_rate if 'success_rate' in locals() else 0.0
+    }
+    os.makedirs(args.save_dir, exist_ok=True)
+    torch.save(final_checkpoint_dict, f"{args.save_dir}/final_agent.pth")
 
 if __name__ == "__main__":
     main()

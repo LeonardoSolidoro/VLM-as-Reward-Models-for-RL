@@ -76,4 +76,5 @@ experiment_in_context_examples: 2
 # Data generation settings
 num_rollouts: 500
 num_frames: 20
-enable_moving_camera: true
+split_percentages: [0.40, 0.30, 0.30] # [expert, partial, random]
+enable_wrist_follow_camera: true
