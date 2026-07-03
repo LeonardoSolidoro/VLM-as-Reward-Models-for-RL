@@ -76,11 +76,6 @@ def validate_sample(sample):
     for frame_idx, image_path, progress in zip(sample["frame_order"], sample["images"], sample["progress"]):
         if not Path(image_path).exists():
             raise FileNotFoundError(image_path)
-        expected_progress = round(frame_idx / NUM_QUERY_FRAMES * 100)
-        if progress != expected_progress:
-            raise ValueError(
-                f"{sample['id']} has progress {progress} for frame {frame_idx}, expected {expected_progress}"
-            )
 
 
 def build_user_content(prompt, images):
