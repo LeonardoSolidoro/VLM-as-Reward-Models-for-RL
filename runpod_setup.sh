@@ -39,7 +39,7 @@ if command -v conda &> /dev/null; then
     conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r || true
 fi
 
-ENV_PREFIX="/workspace/envs/VLM_RM_flashattn"
+ENV_PREFIX="/workspace/envs/VLM_RM"
 
 if [ ! -d "$ENV_PREFIX" ]; then
     echo "Creating Conda environment at $ENV_PREFIX"
@@ -75,5 +75,5 @@ fi
 echo "=================================================="
 echo "RunPod Setup Complete!"
 echo "To activate your persistent environment, run:"
-echo "conda activate /workspace/envs/VLM_RM_flashattn"
+echo "conda activate /workspace/envs/VLM_RM"
 echo "=================================================="

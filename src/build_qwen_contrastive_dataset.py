@@ -1,13 +1,12 @@
 import json
-import math
 import random
 from pathlib import Path
+from typing import Dict, List, Tuple
 import yaml
 
 TASKS = ["PickCube-v1", "PushCube-v1", "PegInsertionSide-v1"]
 VIEW_STATIC = "topview"
 VIEW_MOVING = "topview" 
-LEVEL = "expert"
 NUM_FRAMES = 20
 QUERY_FRAMES = 19
 TRAIN_PER_TASK = 400
@@ -15,39 +14,36 @@ VAL_PER_TASK = 50
 TEST_PER_TASK = 50
 TINY_PER_TASK = 2
 
-def load_config(repo_root):
+def load_config(repo_root: Path) -> Dict:
     config_path = repo_root / "configs" / "configs.yaml"
     with config_path.open("r") as f:
         return yaml.safe_load(f)
 
-def rollout_number(path):
+def rollout_number(path: Path) -> int:
     return int(path.name.split("_")[-1])
 
-def rel_path(path, repo_root):
+def rel_path(path: Path, repo_root: Path) -> str:
     return path.relative_to(repo_root).as_posix()
 
-def parse_reward(reward: float) -> int:
-    """Parses environment GT float reward into a 0-100 percentage.
-    Very small noise values < 0.001 are floored to 0. Otherwise it rounds up.
-    Handles floats, scientific notation natively parsed by json/float()."""
-    val = float(reward)
-    if val < 0.001:
-        return 0
-    return min(100, int(math.ceil(val * 100)))
-
-def find_rollouts(data_root, task):
-    task_root = data_root / task / LEVEL
+def find_rollouts(data_root: Path, task: str) -> List[Tuple[Path, str]]:
+    task_root = data_root / task
     if not task_root.exists():
         raise FileNotFoundError(f"Missing task folder: {task_root}")
 
-    rollouts = [p for p in task_root.iterdir() if p.is_dir() and p.name.startswith("rollout_")]
-    rollouts.sort(key=rollout_number)
+    rollouts = []
+    for level_dir in task_root.iterdir():
+        if level_dir.is_dir():
+            level_name = level_dir.name
+            level_rollouts = [(p, level_name) for p in level_dir.iterdir() if p.is_dir() and p.name.startswith("rollout_")]
+            rollouts.extend(level_rollouts)
+            
+    rollouts.sort(key=lambda x: rollout_number(x[0]))
     return rollouts
 
-def frame_path(rollout_path, view_name, frame_idx):
+def frame_path(rollout_path: Path, view_name: str, frame_idx: int) -> Path:
     return rollout_path / f"{view_name}_frame_{frame_idx:03d}.jpg"
 
-def check_rollout(rollout_path_static, rollout_path_moving, view_name):
+def check_rollout(rollout_path_static: Path, rollout_path_moving: Path, view_name: str) -> Tuple[bool, str]:
     # Check static
     frame_files_static = list(rollout_path_static.glob(f"{view_name}_frame_*.jpg"))
     if len(frame_files_static) != NUM_FRAMES:
@@ -65,28 +61,15 @@ def check_rollout(rollout_path_static, rollout_path_moving, view_name):
     missing_moving = [frame_path(rollout_path_moving, view_name, i) for i in range(NUM_FRAMES) if not frame_path(rollout_path_moving, view_name, i).exists()]
     if missing_moving:
         return False, f"missing {len(missing_moving)} expected moving frame image(s)"
-
-    rewards_path = rollout_path_static / "rewards.json"
-    if not rewards_path.exists():
-        return False, "missing rewards.json"
-        
-    try:
-        with open(rewards_path, "r") as f:
-            rewards = json.load(f)
-        if len(rewards) != NUM_FRAMES:
-            return False, f"rewards.json has {len(rewards)} entries, expected {NUM_FRAMES}"
-    except Exception as e:
-        return False, f"failed to parse rewards.json: {e}"
-
+    
     return True, ""
 
-def build_record(task, task_description, rollout_path_static, rollout_path_moving, repo_root, seed, view_name, primary_view_type):
+def build_record(task: str, task_description: str, rollout_path_static: Path, rollout_path_moving: Path, repo_root: Path, seed: int, view_name: str, primary_view_type: str, level_name: str) -> Dict:
     ok, reason = check_rollout(rollout_path_static, rollout_path_moving, view_name)
     if not ok:
         raise ValueError(f"Invalid rollout {rollout_path_static}: {reason}")
 
     frame_order = list(range(1, NUM_FRAMES))
-    random.Random(seed).shuffle(frame_order)
 
     images_static = [rel_path(frame_path(rollout_path_static, view_name, idx), repo_root) for idx in frame_order]
     images_moving = [rel_path(frame_path(rollout_path_moving, view_name, idx), repo_root) for idx in frame_order]
@@ -100,10 +83,38 @@ def build_record(task, task_description, rollout_path_static, rollout_path_movin
         images_positive = images_moving
         initial_image = rel_path(frame_path(rollout_path_static, view_name, 0), repo_root)
         
-    with open(rollout_path_static / "rewards.json", "r") as f:
-        rewards = json.load(f)
+    if level_name == "random":
+        rewards_path = rollout_path_static / "rewards.json"
+        if not rewards_path.exists():
+            raise FileNotFoundError(f"Missing rewards.json in {rollout_path_static}")
+        with open(rewards_path, "r") as f:
+            rewards = json.load(f)
+            
+        progress = []
+        for idx in frame_order:
+            reward = rewards[idx]
+            if reward < 0.001:
+                reward = 0.0
+            p = round(reward * 100)
+            p = max(0, min(100, p))
+            progress.append(p)
+    else:
+        metadata_path = rollout_path_static / "metadata.json"
+        if not metadata_path.exists():
+            raise FileNotFoundError(f"Missing metadata.json in {rollout_path_static}")
+        with open(metadata_path, "r") as f:
+            metadata = json.load(f)
+            
+        total_steps = metadata["total_steps"]
+        frame_steps = metadata["frame_steps"]
         
-    progress = [parse_reward(rewards[idx]) for idx in frame_order]
+        progress = []
+        for idx in frame_order:
+            step = frame_steps[idx]
+            p = round((step / total_steps) * 100) if total_steps > 0 else 0
+            p = max(0, min(100, p))
+            progress.append(p)
+
     rollout_idx = rollout_number(rollout_path_static)
 
     return {
@@ -118,14 +129,15 @@ def build_record(task, task_description, rollout_path_static, rollout_path_movin
         "images_positive": images_positive, # positive images (secondary for Contrastive)
         "progress": progress,
         "primary_view": primary_view_type,
+        "level": level_name,
     }
 
-def write_jsonl(path, rows):
+def write_jsonl(path: Path, rows: List[Dict]) -> None:
     with path.open("w") as f:
         for row in rows:
             f.write(json.dumps(row) + "\n")
 
-def validate_records(rows, repo_root):
+def validate_records(rows: List[Dict], repo_root: Path) -> None:
     seen_ids = set()
     for row in rows:
         if row["id"] in seen_ids:
@@ -147,10 +159,7 @@ def validate_records(rows, repo_root):
             if not (repo_root / pos_image_path).exists():
                 raise FileNotFoundError(f"Missing positive image path in {row['id']}: {pos_image_path}")
 
-            if not isinstance(progress, int) or not (0 <= progress <= 100):
-                raise ValueError(f"Bad progress in {row['id']}: got {progress}, must be int between 0 and 100")
-
-def validate_disjoint(split_rows):
+def validate_disjoint(split_rows: Dict[str, List[Dict]]) -> None:
     split_paths = {}
     for split_name, rows in split_rows.items():
         if split_name == "tiny":
@@ -162,16 +171,16 @@ def validate_disjoint(split_rows):
                 raise ValueError(f"Trajectory appears in both {split_paths[path]} and {split_name}: {path}")
             split_paths[path] = split_name
 
-def main():
+def main() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     config = load_config(repo_root)
     seed = int(config["seed"])
 
-    data_root_static = repo_root / config["data_root"] / "static"
-    data_root_moving = repo_root / config["data_root"] / "moving_mounted"
+    data_root_static = repo_root / config["data_root"] / "static_rl"
+    data_root_moving = repo_root / config["data_root"] / "moving_mounted_rl"
     
-    output_root = repo_root / "finetune_data_contrastive" / "moving_mounted"
-    output_root.mkdir(exist_ok=True)
+    output_root = repo_root / "finetune_data" / "contrastive_rl"
+    output_root.mkdir(parents=True, exist_ok=True)
 
     task_descriptions = {
         task: config["tasks"][task]["description"]
@@ -188,13 +197,13 @@ def main():
         rollouts_static = find_rollouts(data_root_static, task)
         rollouts_moving = find_rollouts(data_root_moving, task)
         
-        moving_by_num = {rollout_number(p): p for p in rollouts_moving}
+        moving_by_num = {rollout_number(p): p for p, _ in rollouts_moving}
         
         found_counts[task] = 0
         skipped[task] = []
 
         valid_rollouts = []
-        for r_static in rollouts_static:
+        for r_static, level_name in rollouts_static:
             r_num = rollout_number(r_static)
             if r_num not in moving_by_num:
                 skipped[task].append((r_static, "missing matching moving rollout"))
@@ -203,7 +212,7 @@ def main():
             r_moving = moving_by_num[r_num]
             ok, reason = check_rollout(r_static, r_moving, view_name)
             if ok:
-                valid_rollouts.append((r_static, r_moving))
+                valid_rollouts.append((r_static, r_moving, level_name))
                 found_counts[task] += 1
             else:
                 skipped[task].append((r_static, reason))
@@ -231,14 +240,14 @@ def main():
             moving_pairs = rollout_pairs[:num_moving]
             static_pairs = rollout_pairs[num_moving:]
             
-            for r_static, r_moving in moving_pairs:
+            for r_static, r_moving, level_name in moving_pairs:
                 frame_seed = seed + rollout_number(r_static) + sum(ord(ch) for ch in task)
-                row = build_record(task, task_descriptions[task], r_static, r_moving, repo_root, frame_seed, view_name, "moving")
+                row = build_record(task, task_descriptions[task], r_static, r_moving, repo_root, frame_seed, view_name, "moving", level_name)
                 split_rows[split_name].append(row)
                 
-            for r_static, r_moving in static_pairs:
+            for r_static, r_moving, level_name in static_pairs:
                 frame_seed = seed + rollout_number(r_static) + sum(ord(ch) for ch in task)
-                row = build_record(task, task_descriptions[task], r_static, r_moving, repo_root, frame_seed, view_name, "static")
+                row = build_record(task, task_descriptions[task], r_static, r_moving, repo_root, frame_seed, view_name, "static", level_name)
                 split_rows[split_name].append(row)
 
     for rows in split_rows.values():

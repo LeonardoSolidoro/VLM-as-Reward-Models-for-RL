@@ -10,6 +10,7 @@ levels:
   - "expert"
   - "partial"
   - "random"
+  - "regressing"
 
 # Task Descriptions
 tasks:
@@ -49,16 +50,13 @@ finetuning_prompt_template: |
   You are an expert roboticist tasked to predict task completion
   percentages for frames of a robot for the task of {task_description}.
   The task completion percentages are between 0 and 100, where 100
-  corresponds to full task completion. Note that these frames are
-  in random order, so please pay attention to the individual frames
-  when reasoning about task completion percentage.
+  corresponds to full task completion.
 
   Initial robot scene: [IMG]
   In the initial robot scene, the task completion percentage is 0.
 
   Now, for the task of {task_description}, output the task completion
-  percentage for the following frames that are presented in random
-  order. For each frame, you must format your response exactly as follows, ending with a score enclosed in xml tags:
+  percentage for the following frames. For each frame, you must format your response exactly as follows, ending with a score enclosed in xml tags:
   Frame X:
   Task Completion Percentage: <score>XX%</score>
   
@@ -76,5 +74,5 @@ experiment_in_context_examples: 2
 # Data generation settings
 num_rollouts: 500
 num_frames: 20
-split_percentages: [0.40, 0.30, 0.30] # [expert, partial, random]
+split_percentages: [0.25, 0.25, 0.25, 0.25] # [expert, partial, random, regressing]
 enable_wrist_follow_camera: true

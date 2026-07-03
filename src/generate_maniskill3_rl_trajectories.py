@@ -95,7 +95,6 @@ def make_env(task: str) -> gym.Env:
     return gym.make(
         task,
         obs_mode="state",
-        control_mode="pd_joint_pos",
         render_mode="rgb_array",
         reward_mode="normalized_dense",
         sim_backend="physx_cpu",
@@ -150,6 +149,7 @@ def _export_split(
     rollout_idx: int, 
     views: List[str], 
     enable_wrist_follow_camera: bool, 
+    total_steps: int,
     is_list: bool = False
 ) -> None:
     """Renders and saves a specific subset of frames from an episode trajectory."""
@@ -179,6 +179,13 @@ def _export_split(
             
     with open(os.path.join(rollout_dir, "rewards.json"), "w") as f:
         json.dump(sampled_rewards, f, indent=4)
+        
+    metadata = {
+        "total_steps": total_steps,
+        "frame_steps": sampled_indices.tolist()
+    }
+    with open(os.path.join(rollout_dir, "metadata.json"), "w") as f:
+        json.dump(metadata, f, indent=4)
 
 
 def export_task(
@@ -198,7 +205,7 @@ def export_task(
 
     camera_type = "moving_mounted_rl" if enable_wrist_follow_camera else "static_rl"
 
-    splits = ["expert", "partial", "random"]
+    splits = ["expert", "partial", "random", "regressing"]
     split_dirs = {}
     for split in splits:
         d = os.path.join(data_root, camera_type, task, split)
@@ -211,12 +218,13 @@ def export_task(
     
     num_expert = int(num_rollouts * split_percentages[0])
     num_partial = int(num_rollouts * split_percentages[1])
-    num_random = num_rollouts - num_expert - num_partial
+    num_random = int(num_rollouts * split_percentages[2])
+    num_regressing = num_rollouts - num_expert - num_partial - num_random
     
-    episodes = load_episodes(task, num_expert + num_partial)
+    episodes = load_episodes(task, num_expert + num_partial + num_regressing)
 
-    if len(episodes) < num_expert + num_partial:
-        print(f"Warning: Not enough expert episodes ({len(episodes)}) to cover {num_expert} expert and {num_partial} partial rollouts. Will use all available.")
+    if len(episodes) < num_expert + num_partial + num_regressing:
+        print(f"Warning: Not enough expert episodes ({len(episodes)}) to cover {num_expert} expert, {num_partial} partial, and {num_regressing} regressing rollouts. Will use all available.")
 
     with h5py.File(h5_path, "r") as h5:
         # Generate Expert Rollouts
@@ -240,7 +248,7 @@ def export_task(
             env.reset(**reset_kwargs)
             actual_max_steps = len(traj["actions"]) + 1
             expert_indices = sample_indices(actual_max_steps, num_frames)
-            _export_split(env, task, states, expert_indices, split_dirs["expert"], rollout_idx, views, enable_wrist_follow_camera)
+            _export_split(env, task, states, expert_indices, split_dirs["expert"], rollout_idx, views, enable_wrist_follow_camera, actual_max_steps - 1)
 
         # Generate Partial Rollouts
         start_idx = num_expert
@@ -268,7 +276,7 @@ def export_task(
             max_cutoff = num_frames + max(1, int((actual_max_steps - num_frames) * 2 / 3))
             N = np.random.randint(num_frames, max_cutoff + 1)
             partial_indices = sample_indices(N, num_frames)
-            _export_split(env, task, states, partial_indices, split_dirs["partial"], rollout_idx, views, enable_wrist_follow_camera)
+            _export_split(env, task, states, partial_indices, split_dirs["partial"], rollout_idx, views, enable_wrist_follow_camera, actual_max_steps - 1)
 
         # Generate Random Rollouts
         start_idx = num_expert + num_partial
@@ -278,7 +286,7 @@ def export_task(
             
             env.reset()
             random_states = [env.unwrapped.get_state_dict()]
-            action = env.action_space.sample()
+            random_action_momentum = env.action_space.sample()
             target_action = env.action_space.sample()
             step_count = 0
             while True:
@@ -286,8 +294,8 @@ def export_task(
                     target_action = env.action_space.sample()
 
                 # Action shape: (Batch, ActionDim)
-                action = 0.90 * action + 0.10 * target_action
-                action = np.clip(action, env.action_space.low, env.action_space.high)
+                random_action_momentum = 0.90 * random_action_momentum + 0.10 * target_action
+                action = np.clip(random_action_momentum, env.action_space.low, env.action_space.high)
                 _, _, term, trunc, _ = env.step(action)
                 random_states.append(env.unwrapped.get_state_dict())
                 step_count += 1
@@ -295,7 +303,60 @@ def export_task(
                     break
             
             random_indices = sample_indices(len(random_states), num_frames)
-            _export_split(env, task, random_states, random_indices, split_dirs["random"], rollout_idx, views, enable_wrist_follow_camera, is_list=True)
+            _export_split(env, task, random_states, random_indices, split_dirs["random"], rollout_idx, views, enable_wrist_follow_camera, len(random_states) - 1, is_list=True)
+
+        # Generate Regressing Rollouts
+        start_idx = num_expert + num_partial + num_random
+        for i in range(num_regressing):
+            rollout_idx = start_idx + i
+            episode_idx = num_expert + num_partial + i
+            if episode_idx >= len(episodes):
+                break
+                
+            print(f"{task}: exporting regressing rollout_{rollout_idx}")
+            episode = episodes[episode_idx]
+            
+            try:
+                episode_id = episode['episode_id']
+                reset_kwargs = episode['reset_kwargs']
+            except KeyError as e:
+                print(f"Missing required key in episode: {e}")
+                raise e
+                
+            traj = h5[f"traj_{episode_id}"]
+            states = traj["env_states"]
+            
+            env.reset(**reset_kwargs)
+            actual_max_steps = len(traj["actions"]) + 1
+            
+            # T is turnaround point between num_frames and 80%
+            min_T = num_frames
+            max_T = max(min_T, int(0.8 * actual_max_steps))
+            T = np.random.randint(min_T, max_T + 1) if min_T < max_T else min_T
+            
+            # Randomize the rendered frame index where the turnaround happens (between 20% and 80% of the sequence)
+            min_forward = max(1, int(num_frames * 0.20))
+            max_forward = max(min_forward, int(num_frames * 0.80))
+            forward_count = np.random.randint(min_forward, max_forward + 1)
+            backward_count = num_frames - forward_count
+            
+            forward_idx = np.round(np.linspace(0, T, forward_count)).astype(int)
+            
+            # Create a pool of all available integers up to T that aren't used by the forward pass
+            available_pool = [x for x in range(T + 1) if x not in forward_idx]
+            
+            # As a mathematical failsafe, expand the pool to actual_max_steps if we still need more frames
+            if len(available_pool) < backward_count:
+                extra = [x for x in range(T + 1, actual_max_steps) if x not in forward_idx]
+                available_pool.extend(extra)
+                
+            # Sample backward_count elements evenly from the pool, starting from highest down to lowest
+            indices = np.round(np.linspace(len(available_pool) - 1, 0, backward_count)).astype(int)
+            final_backward_idx = [available_pool[i] for i in indices]
+            
+            regressing_indices = np.concatenate([forward_idx, final_backward_idx]).astype(int)
+            
+            _export_split(env, task, states, regressing_indices, split_dirs["regressing"], rollout_idx, views, enable_wrist_follow_camera, actual_max_steps - 1)
 
     env.close()
     print(f"{task}: saved mixed rollouts to {data_root}/{camera_type}/{task}/")
@@ -331,7 +392,7 @@ def main() -> None:
     print(f"Writing RL trajectories to: {data_root}")
     camera_type = "moving_mounted_rl" if enable_wrist_follow_camera else "static_rl"
     print(f"Camera type: {camera_type}")
-    print(f"Total Rollouts: {num_rollouts} (Split: Expert={split_percentages[0]*100}%, Partial={split_percentages[1]*100}%, Random={split_percentages[2]*100}%)")
+    print(f"Total Rollouts: {num_rollouts} (Split: Expert={split_percentages[0]*100}%, Partial={split_percentages[1]*100}%, Random={split_percentages[2]*100}%, Regressing={split_percentages[3]*100}%)")
     print(f"Frames per rollout: {num_frames}")
 
     for task in TASKS:

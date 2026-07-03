@@ -29,3 +29,5 @@ peft
 bitsandbytes
 safetensors
 tokenizers
+wandb
+qwen-vl-utils

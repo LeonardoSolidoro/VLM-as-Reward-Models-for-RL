@@ -6,6 +6,7 @@ import random
 import re
 from collections import deque
 import yaml
+from typing import Tuple, List, Dict, Any, Optional, Union
 
 import numpy as np
 import cv2
@@ -25,7 +26,17 @@ from peft import PeftModel
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from src.qwen_progress_dataset import build_frames_list, build_user_content
 
-def evaluate_policy(actor, task, device, num_episodes=10):
+def set_seed(seed: int, deterministic: bool = False):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    if deterministic:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+def evaluate_policy(actor: nn.Module, task: str, device: torch.device, num_episodes: int = 10) -> Tuple[float, float]:
     eval_env = gym.make(
         task,
         obs_mode="state", 
@@ -62,7 +73,7 @@ def evaluate_policy(actor, task, device, num_episodes=10):
             done = terminated or truncated
             step_count += 1
         
-            is_success = info.get("success", False)
+            is_success = info["success"]
             if hasattr(is_success, "any"): is_success = bool(is_success.any())
             
             if is_success:
@@ -78,7 +89,7 @@ def evaluate_policy(actor, task, device, num_episodes=10):
 # ==============================================================================
 
 class BatchRenorm1d(nn.Module):
-    def __init__(self, num_features, eps=1e-5, momentum=0.01):
+    def __init__(self, num_features: int, eps: float = 1e-5, momentum: float = 0.01):
         super().__init__()
         self.num_features = num_features
         self.eps = eps
@@ -89,7 +100,8 @@ class BatchRenorm1d(nn.Module):
         self.register_buffer('running_var', torch.ones(num_features))
         self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x shape: (Batch, Features)
         if self.training:
             batch_mean = x.mean(dim=0)
             batch_var = x.var(dim=0, unbiased=False)
@@ -118,7 +130,7 @@ class BatchRenorm1d(nn.Module):
         return self.weight * x_norm + self.bias
 
 class PolicyNetwork(nn.Module):
-    def __init__(self, state_dim, action_dim, max_action, hidden_dim=256):
+    def __init__(self, state_dim: int, action_dim: int, max_action: float, hidden_dim: int = 256):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
@@ -130,7 +142,8 @@ class PolicyNetwork(nn.Module):
         self.log_std_linear = nn.Linear(hidden_dim, action_dim)
         self.max_action = max_action
 
-    def forward(self, state):
+    def forward(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        # state shape: (Batch, state_dim)
         x = self.net(state)
         mean = self.mean_linear(x)
         log_std = self.log_std_linear(x)
@@ -140,7 +153,8 @@ class PolicyNetwork(nn.Module):
         log_std = LOG_STD_MIN + 0.5 * (LOG_STD_MAX - LOG_STD_MIN) * (log_std + 1)
         return mean, log_std
 
-    def sample(self, state):
+    def sample(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        # state shape: (Batch, state_dim)
         mean, log_std = self.forward(state)
         std = log_std.exp()
         normal = torch.distributions.Normal(mean, std)
@@ -155,7 +169,7 @@ class PolicyNetwork(nn.Module):
         return action, log_prob
 
 class QNetwork(nn.Module):
-    def __init__(self, state_dim, action_dim, hidden_dim=2048):
+    def __init__(self, state_dim: int, action_dim: int, hidden_dim: int = 2048):
         super().__init__()
         # CrossQ: 2048 width, BatchRenorm in the critic
         self.q1 = nn.Sequential(
@@ -177,7 +191,9 @@ class QNetwork(nn.Module):
             nn.Linear(hidden_dim, 1)
         )
 
-    def forward(self, state, action):
+    def forward(self, state: torch.Tensor, action: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        # state shape: (Batch, state_dim)
+        # action shape: (Batch, action_dim)
         sa = torch.cat([state, action], 1)
         return self.q1(sa), self.q2(sa)
 
@@ -186,28 +202,28 @@ class QNetwork(nn.Module):
 # ==============================================================================
 
 class SimpleReplayBuffer:
-    def __init__(self, capacity):
+    def __init__(self, capacity: int):
         self.buffer = deque(maxlen=capacity)
     
-    def add(self, state, action, reward, next_state, done):
+    def add(self, state: np.ndarray, action: np.ndarray, reward: float, next_state: np.ndarray, done: bool):
         self.buffer.append((state, action, reward, next_state, done))
     
-    def sample(self, batch_size):
+    def sample(self, batch_size: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         batch = random.sample(self.buffer, batch_size)
         s, a, r, ns, d = map(np.array, zip(*batch))
         return s, a, r, ns, d
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.buffer)
 
-def parse_percentages(text):
+def parse_percentages(text: str) -> List[float]:
     values = []
     for match in re.findall(r"(\d+(?:\.\d+)?)\s*%", text):
         value = float(match) / 100.0
         values.append(value)
     return values
 
-def check_vlm_diagnostics(percentages, shuffled_indices, ep_idx=""):
+def check_vlm_diagnostics(percentages: List[float], shuffled_indices: List[int], ep_idx: Union[int, str] = ""):
     # Align percentages with their actual episode steps and sort chronologically
     known_pairs = sorted(zip(shuffled_indices, percentages), key=lambda x: x[0])
     chrono_steps = [x[0] for x in known_pairs]
@@ -241,7 +257,7 @@ def check_vlm_diagnostics(percentages, shuffled_indices, ep_idx=""):
         else:
             consecutive_identical = 1
 
-def annotate_batch(episodes_data, model, processor, task_description, prompt_template, device, context_len=20, base_episode_idx=0):
+def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, processor: Any, task_description: str, prompt_template: str, device: torch.device, context_len: int = 20, base_episode_idx: int = 0) -> List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]:
     """
     Synchronously annotates a batch of episodes using the VLM, computes PBRS rewards, 
     and returns a flattened list of (state, action, reward, next_state, done) transitions.
@@ -413,59 +429,60 @@ def update_wrist_follow_camera(env, task):
     import numpy as np
     from mani_skill.utils import sapien_utils
     wrist_link_name = "panda_hand"
-    try:
-        wrist_link = env.agent.robot.links_map[wrist_link_name]
-        wrist_position = wrist_link.pose.p[0].cpu().numpy()
+    wrist_link = env.agent.robot.links_map[wrist_link_name]
+    wrist_position = wrist_link.pose.p[0].cpu().numpy()
 
-        if task == "PickCube-v1":
-            eye = wrist_position + np.array([0.10, -0.10, 0.28])
-        else:
-            eye = wrist_position + np.array([0.065, -0.065, 0.25])
+    if task == "PickCube-v1":
+        eye = wrist_position + np.array([0.10, -0.10, 0.28])
+    else:
+        eye = wrist_position + np.array([0.065, -0.065, 0.25])
 
-        target = get_task_camera_target(env, task)
-        pose = sapien_utils.look_at(eye=eye, target=target)
-        cam = env.scene.human_render_cameras["render_camera"].camera
-        cam.set_local_pose(pose.sp)
-    except Exception as e:
-        pass # Fail gracefully if camera or robot not found
+    target = get_task_camera_target(env, task)
+    pose = sapien_utils.look_at(eye=eye, target=target)
+    cam = env.scene.human_render_cameras["render_camera"].camera
+    cam.set_local_pose(pose.sp)
 
 def get_state_dict(env, obs, task, use_moving_mounted_camera=False):
     if isinstance(obs, dict) and "image" in obs:
         return obs
-    try:
-        if use_moving_mounted_camera:
-            update_wrist_follow_camera(env.unwrapped, task)
-        if hasattr(env.unwrapped, "render_rgb_array"):
-            image = env.unwrapped.render_rgb_array(camera_name="render_camera")
-        else:
-            image = env.render()
-        if hasattr(image, "cpu"): image = image.cpu().numpy()
-        if image.ndim == 4: image = image[0]
-        image = image.astype(np.uint8)
-        return {"state": obs, "image": image}
-    except:
-        return {"state": obs, "image": np.zeros((128, 128, 3), dtype=np.uint8)}
+    if use_moving_mounted_camera:
+        update_wrist_follow_camera(env.unwrapped, task)
+    if hasattr(env.unwrapped, "render_rgb_array"):
+        image = env.unwrapped.render_rgb_array(camera_name="render_camera")
+    else:
+        image = env.render()
+    if hasattr(image, "cpu"): image = image.cpu().numpy()
+    if image.ndim == 4: image = image[0]
+    image = image.astype(np.uint8)
+    return {"state": obs, "image": image}
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="PickCube-v1")
-    parser.add_argument("--max-steps", type=int, default=500000)
+    parser.add_argument("--task", type=str, default="PushCube-v1")
+    parser.add_argument("--max-steps", type=int, default=300000)
     parser.add_argument("--batch-size", type=int, default=256) # Can be 1024 for more stable gradients
     parser.add_argument("--utd-ratio", type=int, default=1)
     parser.add_argument("--learning-starts", type=int, default=5000) # Can be 10000
+    parser.add_argument("--resume", action="store_true", help="Resume training from the latest checkpoint if available")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+    parser.add_argument("--deterministic", action="store_true", default=True, help="Enable deterministic operations in PyTorch (enabled by default)")
+    parser.add_argument("--no-deterministic", action="store_false", dest="deterministic", help="Disable deterministic operations")
 
     # Eval
     parser.add_argument("--eval-freq", type=int, default=10000)
     parser.add_argument("--eval-episodes", type=int, default=20)
     parser.add_argument("--target-success-rate", type=float, default=0.90)
     parser.add_argument("--save-dir", type=str, default="finetuning_output/cleanrl_crossq/weights")
+    parser.add_argument("--reward-stage1", type=float, default=5.0, help="First reward milestone for checkpointing")
+    parser.add_argument("--reward-stage2", type=float, default=10.0, help="Second reward milestone for checkpointing")
 
     # VLM
     parser.add_argument("--use-env-rewards", action="store_true", help="Bypass VLM and use native env dense rewards for debugging")
     parser.add_argument("--moving-mounted-camera", action="store_true", help="Enable the wrist-follow camera (moving mounted) instead of the default static camera")
     parser.add_argument("--model-id", type=str, default="Qwen/Qwen3-VL-8B-Instruct")
     parser.add_argument("--adapter-dir", type=str, default="outputs/qwen3vl-progress-lora-tiny")
-    parser.add_argument("--device", type=str, default="cuda")
+    default_device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+    parser.add_argument("--device", type=str, default=default_device)
     parser.add_argument("--vlm-context-len", type=int, default=20)
     parser.add_argument("--vlm-batch-size", type=int, default=1) # Max 4, less is best for stability!
     parser.add_argument("--4bit-quant", dest="quant_4bit", action="store_true", help="Enable 4-bit quantization for the VLM")
@@ -476,11 +493,15 @@ def main():
     parser.add_argument("--adam-beta1", type=float, default=0.5)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.8) # Can be 0.99 for better long-term performance, but 0.8 is more stable for VLM-based rewards and short-horizon tasks.
+    parser.add_argument("--alpha", type=float, default=None, help="Fixed entropy regularization. If not provided, alpha is auto-tuned.")
     parser.add_argument("--bootstrap-at-done", type=str, default="always", choices=["always", "never"], help="Whether to bootstrap at terminal states.")
     parser.add_argument("--buffer-size", type=int, default=100000)
     parser.add_argument("--policy-delay", type=int, default=3)
 
     args = parser.parse_args()
+    args.save_dir = os.path.join(args.save_dir, args.task)
+    
+    set_seed(args.seed, args.deterministic)
 
     device = torch.device(args.device)
 
@@ -542,9 +563,12 @@ def main():
     actor_optimizer = optim.Adam(actor.parameters(), lr=args.learning_rate, betas=(args.adam_beta1, 0.999))
     critic_optimizer = optim.Adam(critic.parameters(), lr=args.learning_rate, betas=(args.adam_beta1, 0.999))
 
-    log_alpha = torch.zeros(1, requires_grad=True, device=device)
-    alpha_optimizer = optim.Adam([log_alpha], lr=args.learning_rate, betas=(args.adam_beta1, 0.999))
-    target_entropy = -action_dim
+    if args.alpha is None:
+        target_entropy = -action_dim
+        log_alpha = torch.zeros(1, requires_grad=True, device=device)
+        alpha_optimizer = optim.Adam([log_alpha], lr=args.learning_rate, betas=(args.adam_beta1, 0.999))
+    else:
+        alpha = args.alpha
 
     buffer = SimpleReplayBuffer(capacity=args.buffer_size)
 
@@ -565,6 +589,40 @@ def main():
     saved_ckpt_10_reward = False
     saved_ckpt_20_reward = False
     saved_ckpt_50_success = False
+
+    latest_checkpoint_path = os.path.join(args.save_dir, "latest_checkpoint.pth")
+    if args.resume and os.path.exists(latest_checkpoint_path):
+        print(f"Resuming training from checkpoint: {latest_checkpoint_path}")
+        try:
+            checkpoint = torch.load(latest_checkpoint_path, map_location=device, weights_only=False)
+            print("Checkpoint loaded successfully!")
+            actor.load_state_dict(checkpoint["actor_state_dict"])
+            critic.load_state_dict(checkpoint["critic_state_dict"])
+            actor_optimizer.load_state_dict(checkpoint["actor_optimizer_state_dict"])
+            critic_optimizer.load_state_dict(checkpoint["critic_optimizer_state_dict"])
+            
+            global_step = checkpoint["global_step"]
+            total_training_updates = checkpoint["total_training_updates"]
+            total_episodes_completed = checkpoint["total_episodes_completed"]
+            best_success_rate = checkpoint["best_success_rate"]
+            consecutive_successes = checkpoint["consecutive_successes"]
+            last_eval_step = checkpoint["last_eval_step"]
+            saved_ckpt_10_reward = checkpoint["saved_ckpt_10_reward"]
+            saved_ckpt_20_reward = checkpoint["saved_ckpt_20_reward"]
+            saved_ckpt_50_success = checkpoint["saved_ckpt_50_success"]
+            buffer.buffer.extend(checkpoint["buffer"])
+            unannotated_episodes = checkpoint["unannotated_episodes"]
+            
+            if args.alpha is None:
+                log_alpha.data = checkpoint["log_alpha"].data
+                alpha_optimizer.load_state_dict(checkpoint["alpha_optimizer_state_dict"])
+                
+            print(f"Resumed from global_step {global_step} (Completed episodes: {total_episodes_completed}, Updates: {total_training_updates})")
+        except Exception as e:
+            print(f"Failed to load checkpoint from {latest_checkpoint_path}: {e}")
+            import traceback
+            traceback.print_exc()
+            raise e
     
     print("Starting Synchronous CleanRL CrossQ Training...")
     random_action_momentum = env.action_space.sample()
@@ -616,6 +674,11 @@ def main():
             episode_data = []
             obs, _ = env.reset()
             state_dict = get_state_dict(env, obs, args.task, args.moving_mounted_camera)
+            
+            # Reset random momentum for the new episode
+            if global_step < args.learning_starts:
+                random_action_momentum = env.action_space.sample()
+                target_action = env.action_space.sample()
 
             if len(unannotated_episodes) >= args.vlm_batch_size:
                 if args.use_env_rewards:
@@ -653,7 +716,10 @@ def main():
                         next_state_batch = torch.FloatTensor(b_next_states).to(device)
                         done_batch = torch.FloatTensor(b_dones).view(-1, 1).to(device)
                     
-                        alpha = log_alpha.exp()
+                        if args.alpha is None:
+                            alpha = log_alpha.exp()
+                        else:
+                            alpha = torch.tensor(args.alpha).to(device)
                     
                         # === CROSSQ CRITIC UPDATE ===
                         with torch.no_grad():
@@ -710,14 +776,16 @@ def main():
                                 param.requires_grad = True
                             
                             # Alpha update
-                            alpha_loss = -(log_alpha.exp() * (pi_log_prob + target_entropy).detach()).mean()
-                            alpha_optimizer.zero_grad()
-                            alpha_loss.backward()
-                            alpha_optimizer.step()
+                            if args.alpha is None:
+                                alpha_loss = -(log_alpha.exp() * (pi_log_prob + target_entropy).detach()).mean()
+                                alpha_optimizer.zero_grad()
+                                alpha_loss.backward()
+                                alpha_optimizer.step()
                         
                         if total_training_updates % args.learning_starts == 0:
                             print(f"Buffer Stats -> Annotated Transitions: {len(buffer)} | Total Generated: {global_step}")
-                            print(f"[Learner Debug] Update {total_training_updates} | Alpha: {alpha.item():.3f} | Avg Single-Step Reward in Batch: {np.mean(b_rewards):.3f}")
+                            alpha_val = alpha.item() if args.alpha is None else args.alpha
+                            print(f"[Learner Debug] Update {total_training_updates} | Alpha: {alpha_val:.3f} | Avg Single-Step Reward in Batch: {np.mean(b_rewards):.3f}")
                         
                 unannotated_episodes = []
 
@@ -732,24 +800,26 @@ def main():
                 checkpoint_dict = {
                     'actor_state_dict': actor.state_dict(),
                     'critic_state_dict': critic.state_dict(),
-                    'log_alpha': log_alpha,
                     'actor_optimizer_state_dict': actor_optimizer.state_dict(),
                     'critic_optimizer_state_dict': critic_optimizer.state_dict(),
-                    'alpha_optimizer_state_dict': alpha_optimizer.state_dict(),
                     'global_step': global_step,
                     'avg_reward': avg_reward,
                     'success_rate': success_rate
                 }
                 
-                if avg_reward > 10.0 and not saved_ckpt_10_reward:
+                if args.alpha is None:
+                    checkpoint_dict['log_alpha'] = log_alpha
+                    checkpoint_dict['alpha_optimizer_state_dict'] = alpha_optimizer.state_dict()
+                
+                if avg_reward > args.reward_stage1 and not saved_ckpt_10_reward:
                     saved_ckpt_10_reward = True
-                    print("Agent reached > 10 reward! Saving checkpoint...")
-                    torch.save(checkpoint_dict, f"{args.save_dir}/agent_reward_10.pth")
+                    print(f"Agent reached > {args.reward_stage1} reward! Saving checkpoint...")
+                    torch.save(checkpoint_dict, f"{args.save_dir}/agent_reward_stage1.pth")
 
-                if avg_reward > 20.0 and not saved_ckpt_20_reward:
+                if avg_reward > args.reward_stage2 and not saved_ckpt_20_reward:
                     saved_ckpt_20_reward = True
-                    print("Agent reached > 20 reward! Saving checkpoint...")
-                    torch.save(checkpoint_dict, f"{args.save_dir}/agent_reward_20.pth")
+                    print(f"Agent reached > {args.reward_stage2} reward! Saving checkpoint...")
+                    torch.save(checkpoint_dict, f"{args.save_dir}/agent_reward_stage2.pth")
 
                 if success_rate >= 0.50 and not saved_ckpt_50_success:
                     saved_ckpt_50_success = True
@@ -770,20 +840,35 @@ def main():
                 else:
                     consecutive_successes = 0
                     
+                checkpoint_dict["total_training_updates"] = total_training_updates
+                checkpoint_dict["total_episodes_completed"] = total_episodes_completed
+                checkpoint_dict["best_success_rate"] = best_success_rate
+                checkpoint_dict["consecutive_successes"] = consecutive_successes
+                checkpoint_dict["last_eval_step"] = global_step
+                checkpoint_dict["saved_ckpt_10_reward"] = saved_ckpt_10_reward
+                checkpoint_dict["saved_ckpt_20_reward"] = saved_ckpt_20_reward
+                checkpoint_dict["saved_ckpt_50_success"] = saved_ckpt_50_success
+                checkpoint_dict["buffer"] = buffer.buffer
+                checkpoint_dict["unannotated_episodes"] = unannotated_episodes
+                
+                torch.save(checkpoint_dict, f"{args.save_dir}/latest_checkpoint.pth")
+                    
                 last_eval_step = global_step
 
     print("Training finished! Saving final checkpoint...")
     final_checkpoint_dict = {
         'actor_state_dict': actor.state_dict(),
         'critic_state_dict': critic.state_dict(),
-        'log_alpha': log_alpha,
         'actor_optimizer_state_dict': actor_optimizer.state_dict(),
         'critic_optimizer_state_dict': critic_optimizer.state_dict(),
-        'alpha_optimizer_state_dict': alpha_optimizer.state_dict(),
         'global_step': global_step,
         'avg_reward': avg_reward if 'avg_reward' in locals() else 0.0,
         'success_rate': success_rate if 'success_rate' in locals() else 0.0
     }
+    
+    if args.alpha is None:
+        final_checkpoint_dict['log_alpha'] = log_alpha
+        final_checkpoint_dict['alpha_optimizer_state_dict'] = alpha_optimizer.state_dict()
     os.makedirs(args.save_dir, exist_ok=True)
     torch.save(final_checkpoint_dict, f"{args.save_dir}/final_agent.pth")
 

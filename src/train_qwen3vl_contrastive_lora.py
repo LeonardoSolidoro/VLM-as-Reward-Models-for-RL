@@ -15,6 +15,7 @@ from transformers import (
 )
 
 from qwen_contrastive_dataset import IGNORE_INDEX, QwenContrastiveDataset
+from utilities import set_all_seeds
 
 
 @dataclass
@@ -322,13 +323,13 @@ class ContrastiveTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 
-def resolve_qlora_arg(args):
+def resolve_qlora_arg(args: argparse.Namespace) -> bool:
     if args.qlora is not None:
         return args.qlora
     return torch.cuda.is_available()
 
 
-def load_model(args, use_qlora):
+def load_model(args: argparse.Namespace, use_qlora: bool):
     dtype = torch.bfloat16 if args.bf16 else torch.float16
     model_kwargs = {
         "attn_implementation": "sdpa"
@@ -351,7 +352,7 @@ def load_model(args, use_qlora):
     return AutoModelForImageTextToText.from_pretrained(args.model_id, **model_kwargs)
 
 
-def add_lora(model, args, use_qlora):
+def add_lora(model, args: argparse.Namespace, use_qlora: bool):
     from peft import LoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training
 
     if use_qlora:
@@ -374,6 +375,7 @@ def add_lora(model, args, use_qlora):
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--model-id", default="Qwen/Qwen3-VL-8B-Instruct")
     parser.add_argument("--train-jsonl", default="finetune_data_contrastive/tiny.jsonl")
     parser.add_argument("--val-jsonl", default="finetune_data_contrastive/tiny.jsonl")
@@ -399,8 +401,9 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = parse_args()
+    set_all_seeds(args.seed, deterministic=True)
     use_qlora = resolve_qlora_arg(args)
 
     print(f"Loading processor: {args.model_id}")

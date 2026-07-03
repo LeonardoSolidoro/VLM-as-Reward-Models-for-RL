@@ -1,14 +1,13 @@
 import json
-import math
 import random
 from pathlib import Path
+from typing import Dict, List, Tuple
 
 import yaml
 
 
 TASKS = ["PickCube-v1", "PushCube-v1", "PegInsertionSide-v1"]
 VIEW = "topview"
-LEVEL = "expert"
 NUM_FRAMES = 20
 QUERY_FRAMES = 19
 TRAIN_PER_TASK = 400
@@ -17,45 +16,40 @@ TEST_PER_TASK = 50
 TINY_PER_TASK = 2
 
 
-def load_config(repo_root):
+def load_config(repo_root: Path) -> Dict:
     config_path = repo_root / "configs" / "configs.yaml"
     with config_path.open("r") as f:
         return yaml.safe_load(f)
 
 
-def rollout_number(path):
+def rollout_number(path: Path) -> int:
     return int(path.name.split("_")[-1])
 
 
-def rel_path(path, repo_root):
+def rel_path(path: Path, repo_root: Path) -> str:
     return path.relative_to(repo_root).as_posix()
 
-
-def parse_reward(reward: float) -> int:
-    """Parses environment GT float reward into a 0-100 percentage.
-    Very small noise values < 0.001 are floored to 0. Otherwise it rounds up.
-    Handles floats, scientific notation natively parsed by json/float()."""
-    val = float(reward)
-    if val < 0.001:
-        return 0
-    return min(100, int(math.ceil(val * 100)))
-
-
-def find_rollouts(data_root, task):
-    task_root = data_root / task / LEVEL
+def find_rollouts(data_root: Path, task: str) -> List[Tuple[Path, str]]:
+    task_root = data_root / task
     if not task_root.exists():
         raise FileNotFoundError(f"Missing task folder: {task_root}")
 
-    rollouts = [p for p in task_root.iterdir() if p.is_dir() and p.name.startswith("rollout_")]
-    rollouts.sort(key=rollout_number)
+    rollouts = []
+    for level_dir in task_root.iterdir():
+        if level_dir.is_dir():
+            level_name = level_dir.name
+            level_rollouts = [(p, level_name) for p in level_dir.iterdir() if p.is_dir() and p.name.startswith("rollout_")]
+            rollouts.extend(level_rollouts)
+            
+    rollouts.sort(key=lambda x: rollout_number(x[0]))
     return rollouts
 
 
-def frame_path(rollout_path, frame_idx):
+def frame_path(rollout_path: Path, frame_idx: int) -> Path:
     return rollout_path / f"{VIEW}_frame_{frame_idx:03d}.jpg"
 
 
-def check_rollout(rollout_path):
+def check_rollout(rollout_path: Path) -> Tuple[bool, str]:
     frame_files = list(rollout_path.glob(f"{VIEW}_frame_*.jpg"))
     if len(frame_files) != NUM_FRAMES:
         return False, f"found {len(frame_files)} {VIEW} images"
@@ -64,35 +58,50 @@ def check_rollout(rollout_path):
     if missing:
         return False, f"missing {len(missing)} expected frame image(s)"
 
-    rewards_path = rollout_path / "rewards.json"
-    if not rewards_path.exists():
-        return False, "missing rewards.json"
-        
-    try:
-        with open(rewards_path, "r") as f:
-            rewards = json.load(f)
-        if len(rewards) != NUM_FRAMES:
-            return False, f"rewards.json has {len(rewards)} entries, expected {NUM_FRAMES}"
-    except Exception as e:
-        return False, f"failed to parse rewards.json: {e}"
-
     return True, ""
 
 
-def build_record(task, task_description, rollout_path, repo_root, seed):
+def build_record(task: str, task_description: str, rollout_path: Path, level_name: str, repo_root: Path, seed: int) -> Dict:
     ok, reason = check_rollout(rollout_path)
     if not ok:
         raise ValueError(f"Invalid rollout {rollout_path}: {reason}")
 
     frame_order = list(range(1, NUM_FRAMES))
-    random.Random(seed).shuffle(frame_order)
 
     images = [rel_path(frame_path(rollout_path, idx), repo_root) for idx in frame_order]
     
-    with open(rollout_path / "rewards.json", "r") as f:
-        rewards = json.load(f)
+    if level_name == "random":
+        rewards_path = rollout_path / "rewards.json"
+        if not rewards_path.exists():
+            raise FileNotFoundError(f"Missing rewards.json in {rollout_path}")
+        with open(rewards_path, "r") as f:
+            rewards = json.load(f)
+            
+        progress = []
+        for idx in frame_order:
+            reward = rewards[idx]
+            if reward < 0.001:
+                reward = 0.0
+            p = round(reward * 100)
+            p = max(0, min(100, p))
+            progress.append(p)
+    else:
+        metadata_path = rollout_path / "metadata.json"
+        if not metadata_path.exists():
+            raise FileNotFoundError(f"Missing metadata.json in {rollout_path}")
+        with open(metadata_path, "r") as f:
+            metadata = json.load(f)
+            
+        total_steps = metadata["total_steps"]
+        frame_steps = metadata["frame_steps"]
         
-    progress = [parse_reward(rewards[idx]) for idx in frame_order]
+        progress = []
+        for idx in frame_order:
+            step = frame_steps[idx]
+            p = round((step / total_steps) * 100) if total_steps > 0 else 0
+            p = max(0, min(100, p))
+            progress.append(p)
+
     rollout_idx = rollout_number(rollout_path)
 
     return {
@@ -104,16 +113,17 @@ def build_record(task, task_description, rollout_path, repo_root, seed):
         "frame_order": frame_order,
         "images": images,
         "progress": progress,
+        "level": level_name,
     }
 
 
-def write_jsonl(path, rows):
+def write_jsonl(path: Path, rows: List[Dict]) -> None:
     with path.open("w") as f:
         for row in rows:
             f.write(json.dumps(row) + "\n")
 
 
-def validate_records(rows, repo_root):
+def validate_records(rows: List[Dict], repo_root: Path) -> None:
     seen_ids = set()
     for row in rows:
         if row["id"] in seen_ids:
@@ -133,11 +143,8 @@ def validate_records(rows, repo_root):
             if not (repo_root / image_path).exists():
                 raise FileNotFoundError(f"Missing image path in {row['id']}: {image_path}")
 
-            if not isinstance(progress, int) or not (0 <= progress <= 100):
-                raise ValueError(f"Bad progress in {row['id']}: got {progress}, must be int between 0 and 100")
 
-
-def validate_disjoint(split_rows):
+def validate_disjoint(split_rows: Dict[str, List[Dict]]) -> None:
     split_paths = {}
     for split_name, rows in split_rows.items():
         if split_name == "tiny":
@@ -150,12 +157,12 @@ def validate_disjoint(split_rows):
             split_paths[path] = split_name
 
 
-def main():
+def main() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     config = load_config(repo_root)
-    seed = int(config.get("seed", 42))
-    data_root = repo_root / config.get("data_root", "data") / "moving_mounted"
-    output_root = repo_root / "finetune_data" / "moving_mounted"
+    seed = int(config["seed"])
+    data_root = repo_root / config["data_root"] / "moving_mounted_rl"
+    output_root = repo_root / "finetune_data" / "moving_mounted_rl"
     output_root.mkdir(parents=True, exist_ok=True)
 
     task_descriptions = {
@@ -173,10 +180,10 @@ def main():
         skipped[task] = []
 
         valid_rollouts = []
-        for rollout_path in rollouts:
+        for rollout_path, level_name in rollouts:
             ok, reason = check_rollout(rollout_path)
             if ok:
-                valid_rollouts.append(rollout_path)
+                valid_rollouts.append((rollout_path, level_name))
             else:
                 skipped[task].append((rollout_path, reason))
 
@@ -195,10 +202,10 @@ def main():
         # The 400/50/50 split uses all 500 rollouts, so tiny is a debug subset.
         split_rollouts["tiny"] = split_rollouts["train"][:TINY_PER_TASK]
 
-        for split_name, rollout_paths in split_rollouts.items():
-            for rollout_path in rollout_paths:
+        for split_name, rollout_items in split_rollouts.items():
+            for rollout_path, level_name in rollout_items:
                 frame_seed = seed + rollout_number(rollout_path) + sum(ord(ch) for ch in task)
-                row = build_record(task, task_descriptions[task], rollout_path, repo_root, frame_seed)
+                row = build_record(task, task_descriptions[task], rollout_path, level_name, repo_root, frame_seed)
                 split_rows[split_name].append(row)
 
     for rows in split_rows.values():
