@@ -18,6 +18,8 @@ finetuning_output/Qwen3-VL-8B-4bit-RL-Contrastive/lora_weights/
 finetuning_output/Qwen3-VL-8B-4bit-RL-Contrastive-Overfitting/lora_weights/
 finetuning_output/Qwen3-VL-8B-4bit-RL-Progress/lora_weights/
 finetuning_output/Qwen3-VL-8B-4bit-RL-Progress-Overfitting/lora_weights/
+finetuning_output/Policy-VLM-Progress/weights/
+finetuning_output/Policy-VLM-Contrastive/weights/
 h5/
 finetuning_output/cleanrl_crossq/weights/
 Qwen3-VL-example/
