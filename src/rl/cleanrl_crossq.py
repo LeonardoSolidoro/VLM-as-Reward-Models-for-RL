@@ -456,6 +456,20 @@ def get_state_dict(env, obs, task, use_moving_mounted_camera=False):
     image = image.astype(np.uint8)
     return {"state": obs, "image": image}
 
+import logging
+
+class StreamToLogger(object):
+    def __init__(self, logger, level=logging.INFO):
+        self.logger = logger
+        self.level = level
+
+    def write(self, buf):
+        for line in buf.rstrip().splitlines():
+            self.logger.log(self.level, line.rstrip())
+
+    def flush(self):
+        pass
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="PushCube-v1")
@@ -500,7 +514,20 @@ def main():
 
     args = parser.parse_args()
     args.save_dir = os.path.join(args.save_dir, args.task)
+    os.makedirs(args.save_dir, exist_ok=True)
     
+    log_file = os.path.join(args.save_dir, "training.log")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    sys.stdout = StreamToLogger(logging.getLogger('STDOUT'), logging.INFO)
+    sys.stderr = StreamToLogger(logging.getLogger('STDERR'), logging.ERROR)
+
     set_seed(args.seed, args.deterministic)
 
     device = torch.device(args.device)
