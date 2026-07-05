@@ -303,9 +303,8 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
         batch_messages, 
         tokenize=True, 
         add_generation_prompt=True,
-        padding=True,
         return_dict=True,
-        return_tensors="pt"
+        processor_kwargs={"padding": True, "return_tensors": "pt"}
     )
 
     inputs = {k: v.to(device) for k, v in inputs.items()}
