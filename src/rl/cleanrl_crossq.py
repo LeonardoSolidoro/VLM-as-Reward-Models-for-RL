@@ -257,7 +257,7 @@ def check_vlm_diagnostics(percentages: List[float], shuffled_indices: List[int],
         else:
             consecutive_identical = 1
 
-def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, processor: Any, task_description: str, prompt_template: str, device: torch.device, context_len: int = 20, base_episode_idx: int = 0) -> List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]:
+def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, processor: Any, task_description: str, prompt_template: str, device: torch.device, context_len: int = 20, base_episode_idx: int = 0, reward_scale: float = 1.0) -> List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]:
     """
     Synchronously annotates a batch of episodes using the VLM, computes PBRS rewards, 
     and returns a flattened list of (state, action, reward, next_state, done) transitions.
@@ -362,7 +362,7 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
             item = episode_data[t_idx]
             
             # Difference Reward
-            r_t = progress[t_idx + 1] - progress[t_idx]
+            r_t = (progress[t_idx + 1] - progress[t_idx]) * reward_scale
             
             all_annotated_transitions.append((
                 item["state"], item["action"], r_t, item["next_state"], item["done"]
@@ -465,6 +465,7 @@ def main():
     parser.add_argument("--device", type=str, default=default_device)
     parser.add_argument("--vlm-context-len", type=int, default=20)
     parser.add_argument("--vlm-batch-size", type=int, default=1) # Max 4, less is best for stability!
+    parser.add_argument("--vlm-reward-scale", type=float, default=10.0, help="Scaling factor for VLM rewards to balance with SAC entropy")
     parser.add_argument("--4bit-quant", dest="quant_4bit", action="store_true", help="Enable 4-bit quantization for the VLM")
     parser.add_argument("--bf16", action="store_true", help="Use bfloat16 precision instead of float16")
 
@@ -694,7 +695,8 @@ def main():
                     annotated_transitions = annotate_batch(
                         unannotated_episodes, model, processor, task_description, prompt_template, args.device, 
                         context_len=args.vlm_context_len,
-                        base_episode_idx=(total_episodes_completed - len(unannotated_episodes))
+                        base_episode_idx=(total_episodes_completed - len(unannotated_episodes)),
+                        reward_scale=args.vlm_reward_scale
                     )
                 
                 # Push to replay buffer
