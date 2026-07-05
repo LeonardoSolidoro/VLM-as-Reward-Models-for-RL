@@ -262,7 +262,7 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
     Synchronously annotates a batch of episodes using the VLM, computes PBRS rewards, 
     and returns a flattened list of (state, action, reward, next_state, done) transitions.
     """
-    features = []
+    batch_messages = []
     batch_metadata = []
 
     for episode_data in episodes_data:
@@ -281,10 +281,8 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
             else:
                 remaining_images.append(episode_data[-1]["image"])
 
-        shuffle_order = list(range(len(remaining_indices)))
-        random.shuffle(shuffle_order)
-        shuffled_indices = [remaining_indices[i] for i in shuffle_order]
-        shuffled_images = [remaining_images[i] for i in shuffle_order]
+        shuffled_indices = remaining_indices
+        shuffled_images = remaining_images
 
         pil_s0 = Image.fromarray(s0_image)
         pil_query_images = [Image.fromarray(img) for img in shuffled_images]
@@ -294,52 +292,21 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
         user_prompt = prompt_template.format(task_description=task_description, frames_list=frames_list)
         content = build_user_content(user_prompt, all_pil_images)
         messages = [{"role": "user", "content": content}]
-    
-        prompt_inputs = processor.apply_chat_template(
-            messages, 
-            tokenize=True, 
-            add_generation_prompt=True,
-            return_dict=True,
-            return_tensors="pt"
-        )
-    
-        # Squeeze batch dimension (1, L) -> (L,)
-        for k in ["input_ids", "attention_mask", "mm_token_type_ids"]:
-            if k in prompt_inputs and prompt_inputs[k].ndim == 2:
-                prompt_inputs[k] = prompt_inputs[k].squeeze(0)
-            
-        features.append(prompt_inputs)
+        batch_messages.append(messages)
         batch_metadata.append({
             "episode_data": episode_data,
             "shuffled_indices": shuffled_indices,
             "n_states": n_states
         })
 
-    # Collate batch exactly like QwenProgressCollator
-    pad_token_id = processor.tokenizer.pad_token_id
-    if pad_token_id is None:
-        pad_token_id = processor.tokenizer.eos_token_id
-    
-    def left_pad(tensors, pad_value):
-        max_len = max(t.shape[0] for t in tensors)
-        padded = []
-        for t in tensors:
-            pad_len = max_len - t.shape[0]
-            if pad_len > 0:
-                padding = torch.full((pad_len,), pad_value, dtype=t.dtype, device=t.device)
-                padded.append(torch.cat([padding, t]))
-            else:
-                padded.append(t)
-        return torch.stack(padded)
-
-    inputs = {
-        "input_ids": left_pad([f["input_ids"] for f in features], pad_token_id),
-        "attention_mask": left_pad([f["attention_mask"] for f in features], 0),
-        "pixel_values": torch.cat([f["pixel_values"] for f in features], dim=0),
-        "image_grid_thw": torch.cat([f["image_grid_thw"] for f in features], dim=0),
-    }
-    if "mm_token_type_ids" in features[0]:
-        inputs["mm_token_type_ids"] = left_pad([f["mm_token_type_ids"] for f in features], 0)
+    inputs = processor.apply_chat_template(
+        batch_messages, 
+        tokenize=True, 
+        add_generation_prompt=True,
+        padding=True,
+        return_dict=True,
+        return_tensors="pt"
+    )
 
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
@@ -500,6 +467,7 @@ def main():
     parser.add_argument("--vlm-context-len", type=int, default=20)
     parser.add_argument("--vlm-batch-size", type=int, default=1) # Max 4, less is best for stability!
     parser.add_argument("--4bit-quant", dest="quant_4bit", action="store_true", help="Enable 4-bit quantization for the VLM")
+    parser.add_argument("--bf16", action="store_true", help="Use bfloat16 precision instead of float16")
 
     # CrossQ & SAC Hyperparameters
     parser.add_argument("--actor-hidden-dim", type=int, default=256)
@@ -556,20 +524,24 @@ def main():
         processor = AutoProcessor.from_pretrained(args.model_id)
         
         model_kwargs = {"device_map": args.device}
+        dtype = torch.bfloat16 if args.bf16 else torch.float16
+        
         if args.quant_4bit:
             model_kwargs["quantization_config"] = BitsAndBytesConfig(
                 load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.float16
+                bnb_4bit_compute_dtype=dtype
             )
         else:
-            model_kwargs["torch_dtype"] = torch.float16
+            model_kwargs["torch_dtype"] = dtype
             
         model = AutoModelForImageTextToText.from_pretrained(
             args.model_id, **model_kwargs
         )
         if args.adapter_dir:
+            print(f"Loading LoRA adapter: {args.adapter_dir}")
             model = PeftModel.from_pretrained(model, args.adapter_dir)
             if not args.quant_4bit:
+                print("Merging LoRA weights into base model...")
                 model = model.merge_and_unload()
         model.eval()
         processor.tokenizer.padding_side = 'left'
