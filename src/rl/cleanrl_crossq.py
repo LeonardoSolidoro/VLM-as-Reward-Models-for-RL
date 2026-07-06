@@ -366,7 +366,7 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
             if use_difference_rewards:
                 r_t = (progress[t_idx + 1] - progress[t_idx])
             else:
-                r_t = progress[t_idx] / 100.0
+                r_t = progress[t_idx]
             
             all_annotated_transitions.append((
                 item["state"], item["action"], r_t, item["next_state"], item["done"]
