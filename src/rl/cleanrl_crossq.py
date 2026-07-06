@@ -89,11 +89,12 @@ def evaluate_policy(actor: nn.Module, task: str, device: torch.device, num_episo
 # ==============================================================================
 
 class BatchRenorm1d(nn.Module):
-    def __init__(self, num_features: int, eps: float = 1e-5, momentum: float = 0.01):
+    def __init__(self, num_features: int, eps: float = 1e-5, momentum: float = 0.01, warmup_steps: int = 10000):
         super().__init__()
         self.num_features = num_features
         self.eps = eps
         self.momentum = momentum
+        self.warmup_steps = warmup_steps
         self.weight = nn.Parameter(torch.ones(num_features))
         self.bias = nn.Parameter(torch.zeros(num_features))
         self.register_buffer('running_mean', torch.zeros(num_features))
@@ -113,8 +114,8 @@ class BatchRenorm1d(nn.Module):
         
             # CrossQ BRN Warmup
             step = self.num_batches_tracked.item()
-            r_max = 1.0 if step < 100000 else 3.0
-            d_max = 0.0 if step < 100000 else 5.0
+            r_max = 1.0 if step < self.warmup_steps else 3.0
+            d_max = 0.0 if step < self.warmup_steps else 5.0
         
             r = torch.clamp(torch.sqrt(batch_var.detach() + self.eps) / torch.sqrt(self.running_var + self.eps), 1.0 / r_max, r_max)
             d = torch.clamp((batch_mean.detach() - self.running_mean) / torch.sqrt(self.running_var + self.eps), -d_max, d_max)
@@ -169,24 +170,24 @@ class PolicyNetwork(nn.Module):
         return action, log_prob
 
 class QNetwork(nn.Module):
-    def __init__(self, state_dim: int, action_dim: int, hidden_dim: int = 2048):
+    def __init__(self, state_dim: int, action_dim: int, hidden_dim: int = 2048, warmup_steps: int = 10000):
         super().__init__()
         # CrossQ: 2048 width, BatchRenorm in the critic
         self.q1 = nn.Sequential(
             nn.Linear(state_dim + action_dim, hidden_dim),
-            BatchRenorm1d(hidden_dim),
+            BatchRenorm1d(hidden_dim, warmup_steps=warmup_steps),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            BatchRenorm1d(hidden_dim),
+            BatchRenorm1d(hidden_dim, warmup_steps=warmup_steps),
             nn.ReLU(),
             nn.Linear(hidden_dim, 1)
         )
         self.q2 = nn.Sequential(
             nn.Linear(state_dim + action_dim, hidden_dim),
-            BatchRenorm1d(hidden_dim),
+            BatchRenorm1d(hidden_dim, warmup_steps=warmup_steps),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            BatchRenorm1d(hidden_dim),
+            BatchRenorm1d(hidden_dim, warmup_steps=warmup_steps),
             nn.ReLU(),
             nn.Linear(hidden_dim, 1)
         )
@@ -555,8 +556,9 @@ def main():
         print("Bypassing VLM (--use-env-rewards is enabled).")
 
     # 3. Init CrossQ Networks
+    warmup_steps = int(args.max_steps * 0.04)
     actor = PolicyNetwork(state_dim, action_dim, max_action, hidden_dim=args.actor_hidden_dim).to(device)
-    critic = QNetwork(state_dim, action_dim, hidden_dim=args.critic_hidden_dim).to(device)
+    critic = QNetwork(state_dim, action_dim, hidden_dim=args.critic_hidden_dim, warmup_steps=warmup_steps).to(device)
 
     # CrossQ: Adam beta1 = 0.5 (or args.adam_beta1)
     actor_optimizer = optim.Adam(actor.parameters(), lr=args.learning_rate, betas=(args.adam_beta1, 0.999))
