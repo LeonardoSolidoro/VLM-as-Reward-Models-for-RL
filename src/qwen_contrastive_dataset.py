@@ -84,19 +84,43 @@ def processor_apply_chat_template(processor, messages):
 def build_model_inputs(processor, user_prompt, assistant_answer, images, images_positive):
     # Anchor inputs (used for CE loss + contrastive anchor)
     full_messages = build_messages(user_prompt, assistant_answer, images)
-    user_messages = [{"role": "user", "content": build_user_content(user_prompt, images)}]
-
     full_inputs = processor_apply_chat_template(processor, full_messages)
-    prompt_inputs = processor.apply_chat_template(
-        user_messages,
-        add_generation_prompt=True,
-        tokenize=True,
-        return_dict=True,
-        return_tensors="pt",
-    )
 
     labels = full_inputs["input_ids"].clone()
-    prompt_len = prompt_inputs["input_ids"].shape[-1]
+    input_ids_list = labels[0].tolist()
+
+    # --- Fast Prompt Length Calculation ---
+    # Find the prompt length by searching for the assistant header tokens.
+    # Qwen-VL uses `<|im_start|>assistant\n` before the assistant's response.
+    im_start_id = processor.tokenizer.convert_tokens_to_ids("<|im_start|>")
+    header_tokens = processor.tokenizer.encode("assistant\n", add_special_tokens=False)
+    
+    if im_start_id is not None:
+        response_template = [im_start_id] + header_tokens
+    else:
+        # Fallback if tokenizer handles it differently
+        response_template = processor.tokenizer.encode("<|im_start|>assistant\n", allowed_special="all", add_special_tokens=False)
+        
+    prompt_len = None
+    # Search backwards to find the last assistant header
+    for i in range(len(input_ids_list) - len(response_template), -1, -1):
+        if input_ids_list[i : i + len(response_template)] == response_template:
+            prompt_len = i + len(response_template)
+            break
+            
+    if prompt_len is None:
+        # Extreme fallback: if sequence matching fails, fall back to the slow method
+        print("Warning: Fast token matching failed. Falling back to slow double-processing.")
+        user_messages = [{"role": "user", "content": build_user_content(user_prompt, images)}]
+        prompt_inputs = processor.apply_chat_template(
+            user_messages,
+            add_generation_prompt=True,
+            tokenize=True,
+            return_dict=True,
+            return_tensors="pt",
+        )
+        prompt_len = prompt_inputs["input_ids"].shape[-1]
+
     if prompt_len >= labels.shape[-1]:
         raise ValueError("Prompt token length is not shorter than full training example")
 
