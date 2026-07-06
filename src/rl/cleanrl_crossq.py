@@ -258,7 +258,7 @@ def check_vlm_diagnostics(percentages: List[float], shuffled_indices: List[int],
         else:
             consecutive_identical = 1
 
-def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, processor: Any, task_description: str, prompt_template: str, device: torch.device, context_len: int = 20, base_episode_idx: int = 0, reward_scale: float = 1.0) -> List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]:
+def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, processor: Any, task_description: str, prompt_template: str, device: torch.device, context_len: int = 20, base_episode_idx: int = 0, use_difference_rewards: bool = False) -> List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]:
     """
     Synchronously annotates a batch of episodes using the VLM, computes PBRS rewards, 
     and returns a flattened list of (state, action, reward, next_state, done) transitions.
@@ -363,7 +363,10 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
             item = episode_data[t_idx]
             
             # Difference Reward
-            r_t = (progress[t_idx + 1] - progress[t_idx]) * reward_scale
+            if use_difference_rewards:
+                r_t = (progress[t_idx + 1] - progress[t_idx])
+            else:
+                r_t = progress[t_idx] / 100.0
             
             all_annotated_transitions.append((
                 item["state"], item["action"], r_t, item["next_state"], item["done"]
@@ -466,7 +469,7 @@ def main():
     parser.add_argument("--device", type=str, default=default_device)
     parser.add_argument("--vlm-context-len", type=int, default=20)
     parser.add_argument("--vlm-batch-size", type=int, default=1) # Max 4, less is best for stability!
-    parser.add_argument("--vlm-reward-scale", type=float, default=10.0, help="Scaling factor for VLM rewards to balance with SAC entropy")
+    parser.add_argument("--difference-rewards", action="store_true", help="Use difference in progress instead of absolute progress as reward")
     parser.add_argument("--4bit-quant", dest="quant_4bit", action="store_true", help="Enable 4-bit quantization for the VLM")
     parser.add_argument("--bf16", action="store_true", help="Use bfloat16 precision instead of float16")
 
@@ -688,8 +691,11 @@ def main():
                         prev_phi = 0.0
                         for item in ep:
                             phi_next = item["task_reward"]
-                            diff_reward = phi_next - prev_phi
-                            annotated_transitions.append((item["state"], item["action"], diff_reward, item["next_state"], item["done"]))
+                            if args.difference_rewards:
+                                r_t = phi_next - prev_phi
+                            else:
+                                r_t = phi_next
+                            annotated_transitions.append((item["state"], item["action"], r_t, item["next_state"], item["done"]))
                             prev_phi = phi_next
                 else:
                     print(f"Batch full! Annotating {len(unannotated_episodes)} episodes at step {global_step}...")
@@ -698,7 +704,7 @@ def main():
                         unannotated_episodes, model, processor, task_description, prompt_template, args.device, 
                         context_len=args.vlm_context_len,
                         base_episode_idx=(total_episodes_completed - len(unannotated_episodes)),
-                        reward_scale=args.vlm_reward_scale
+                        use_difference_rewards=args.difference_rewards
                     )
                 
                 # Push to replay buffer
