@@ -480,6 +480,7 @@ def main():
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.8) # Can be 0.99 for better long-term performance, but 0.8 is more stable for VLM-based rewards and short-horizon tasks.
     parser.add_argument("--alpha", type=float, default=None, help="Fixed entropy regularization. If not provided, alpha is auto-tuned.")
+    parser.add_argument("--target-entropy", type=float, default=None, help="Target entropy for auto-tuning. If not provided, defaults to -action_dim.")
     parser.add_argument("--bootstrap-at-done", type=str, default="always", choices=["always", "never"], help="Whether to bootstrap at terminal states.")
     parser.add_argument("--buffer-size", type=int, default=100000)
     parser.add_argument("--policy-delay", type=int, default=3)
@@ -568,7 +569,7 @@ def main():
     critic_optimizer = optim.Adam(critic.parameters(), lr=args.learning_rate, betas=(args.adam_beta1, 0.999))
 
     if args.alpha is None:
-        target_entropy = -action_dim
+        target_entropy = args.target_entropy if args.target_entropy is not None else -action_dim
         log_alpha = torch.zeros(1, requires_grad=True, device=device)
         alpha_optimizer = optim.Adam([log_alpha], lr=args.learning_rate, betas=(args.adam_beta1, 0.999))
     else:
