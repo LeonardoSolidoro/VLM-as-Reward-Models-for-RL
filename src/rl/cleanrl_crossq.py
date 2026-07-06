@@ -40,6 +40,7 @@ def evaluate_policy(actor: nn.Module, task: str, device: torch.device, num_episo
     eval_env = gym.make(
         task,
         obs_mode="state", 
+        control_mode="pd_ee_delta_pos",
         render_mode=None, 
         sim_backend="physx_cpu",
         render_backend="sapien_cpu", 
@@ -482,7 +483,7 @@ def main():
     parser.add_argument("--alpha", type=float, default=None, help="Fixed entropy regularization. If not provided, alpha is auto-tuned.")
     parser.add_argument("--target-entropy", type=float, default=None, help="Target entropy for auto-tuning. If not provided, defaults to -action_dim.")
     parser.add_argument("--bootstrap-at-done", type=str, default="always", choices=["always", "never"], help="Whether to bootstrap at terminal states.")
-    parser.add_argument("--buffer-size", type=int, default=100000)
+    parser.add_argument("--buffer-size", type=int, default=1000000)
     parser.add_argument("--policy-delay", type=int, default=3)
 
     args = parser.parse_args()
@@ -501,6 +502,13 @@ def main():
     sys.stdout = StreamToLogger(logging.getLogger('STDOUT'), logging.INFO)
     sys.stderr = StreamToLogger(logging.getLogger('STDERR'), logging.ERROR)
 
+    print("=" * 50)
+    print("TRAINING CONFIGURATION")
+    print("=" * 50)
+    for arg, value in vars(args).items():
+        print(f"{arg}: {value}")
+    print("=" * 50)
+
     set_seed(args.seed, args.deterministic)
 
     device = torch.device(args.device)
@@ -508,6 +516,7 @@ def main():
     # 1. Init Environment
     env_kwargs = {
         "obs_mode": "state",
+        "control_mode": "pd_ee_delta_pos",
         "render_mode": "rgb_array",
         "sim_backend": "physx_cpu",
         "render_backend": "sapien_cpu",
