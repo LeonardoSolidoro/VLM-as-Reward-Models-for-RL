@@ -69,10 +69,20 @@ def build_record(task: str, task_description: str, rollout_path_static: Path, ro
     if not ok:
         raise ValueError(f"Invalid rollout {rollout_path_static}: {reason}")
 
-    frame_order = list(range(1, NUM_FRAMES))
+    metadata_path = rollout_path_static / "metadata.json"
+    if not metadata_path.exists():
+        raise FileNotFoundError(f"Missing metadata.json in {rollout_path_static}")
+    with open(metadata_path, "r") as f:
+        metadata = json.load(f)
+        
+    total_steps = metadata["total_steps"]
+    frame_steps = metadata["frame_steps"]
+    
+    true_frame_order = frame_steps[1:]
+    seq_frame_order = list(range(1, NUM_FRAMES))
 
-    images_static = [rel_path(frame_path(rollout_path_static, view_name, idx), repo_root) for idx in frame_order]
-    images_moving = [rel_path(frame_path(rollout_path_moving, view_name, idx), repo_root) for idx in frame_order]
+    images_static = [rel_path(frame_path(rollout_path_static, view_name, idx), repo_root) for idx in seq_frame_order]
+    images_moving = [rel_path(frame_path(rollout_path_moving, view_name, idx), repo_root) for idx in seq_frame_order]
     
     if primary_view_type == "moving":
         images_anchor = images_moving
@@ -83,37 +93,30 @@ def build_record(task: str, task_description: str, rollout_path_static: Path, ro
         images_positive = images_moving
         initial_image = rel_path(frame_path(rollout_path_static, view_name, 0), repo_root)
         
-    if level_name == "random":
+    if primary_view_type == "moving":
+        rewards_path = rollout_path_moving / "rewards.json"
+    else:
         rewards_path = rollout_path_static / "rewards.json"
-        if not rewards_path.exists():
-            raise FileNotFoundError(f"Missing rewards.json in {rollout_path_static}")
-        with open(rewards_path, "r") as f:
-            rewards = json.load(f)
-            
-        progress = []
-        for idx in frame_order:
+        
+    if not rewards_path.exists():
+        raise FileNotFoundError(f"Missing rewards.json in {rewards_path}")
+        
+    with open(rewards_path, "r") as f:
+        rewards = json.load(f)
+        
+    progress = []
+    for idx in seq_frame_order:
+        if level_name == "random":
             reward = rewards[idx]
             if reward < 0.001:
                 reward = 0.0
             p = round(reward * 100)
-            p = max(0, min(100, p))
-            progress.append(p)
-    else:
-        metadata_path = rollout_path_static / "metadata.json"
-        if not metadata_path.exists():
-            raise FileNotFoundError(f"Missing metadata.json in {rollout_path_static}")
-        with open(metadata_path, "r") as f:
-            metadata = json.load(f)
-            
-        total_steps = metadata["total_steps"]
-        frame_steps = metadata["frame_steps"]
-        
-        progress = []
-        for idx in frame_order:
+        else:
             step = frame_steps[idx]
-            p = round((step / total_steps) * 100) if total_steps > 0 else 0
-            p = max(0, min(100, p))
-            progress.append(p)
+            p = round((step / max(1, total_steps)) * 100)
+            
+        p = max(0, min(100, p))
+        progress.append(p)
 
     rollout_idx = rollout_number(rollout_path_static)
 
@@ -124,7 +127,7 @@ def build_record(task: str, task_description: str, rollout_path_static: Path, ro
         "trajectory_path_static": rel_path(rollout_path_static, repo_root),
         "trajectory_path_moving": rel_path(rollout_path_moving, repo_root),
         "initial_image": initial_image,
-        "frame_order": frame_order,
+        "frame_order": true_frame_order,
         "images": images_anchor,  # anchor images (primary for LLM)
         "images_positive": images_positive, # positive images (secondary for Contrastive)
         "progress": progress,
@@ -149,9 +152,6 @@ def validate_records(rows: List[Dict], repo_root: Path) -> None:
 
         if not (len(row["frame_order"]) == len(row["images"]) == len(row["images_positive"]) == len(row["progress"]) == QUERY_FRAMES):
             raise ValueError(f"Bad record lengths for {row['id']}")
-
-        if sorted(row["frame_order"]) != list(range(1, NUM_FRAMES)):
-            raise ValueError(f"Bad frame_order for {row['id']}")
 
         for frame_idx, image_path, pos_image_path, progress in zip(row["frame_order"], row["images"], row["images_positive"], row["progress"]):
             if not (repo_root / image_path).exists():

@@ -66,10 +66,6 @@ def validate_sample(sample):
         raise ValueError(f"{sample['id']} has {len(sample['frame_order'])} frame_order entries")
     if len(sample["progress"]) != NUM_QUERY_FRAMES:
         raise ValueError(f"{sample['id']} has {len(sample['progress'])} progress labels")
-    if 0 in sample["frame_order"]:
-        raise ValueError(f"{sample['id']} includes frame 0 in frame_order")
-    if sorted(sample["frame_order"]) != list(range(1, NUM_QUERY_FRAMES + 1)):
-        raise ValueError(f"{sample['id']} frame_order must contain exactly 1..19")
 
     if not Path(sample["initial_image"]).exists():
         raise FileNotFoundError(sample["initial_image"])

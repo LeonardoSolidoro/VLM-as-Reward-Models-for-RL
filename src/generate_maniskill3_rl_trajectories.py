@@ -195,7 +195,8 @@ def export_task(
     num_rollouts: int, 
     num_frames: int, 
     split_percentages: List[float], 
-    enable_wrist_follow_camera: bool
+    enable_wrist_follow_camera: bool,
+    seed: int
 ) -> None:
     """Exports expert, partial, and random trajectory data for a specific task."""
     h5_path = os.path.join(DEMO_ROOT, task, "motionplanning", "trajectory.h5")
@@ -284,7 +285,8 @@ def export_task(
             rollout_idx = start_idx + i
             print(f"{task}: exporting random rollout_{rollout_idx}")
             
-            env.reset()
+            env.reset(seed=seed + rollout_idx)
+            env.action_space.seed(seed + rollout_idx)
             random_states = [env.unwrapped.get_state_dict()]
             random_action_momentum = env.action_space.sample()
             target_action = env.action_space.sample()
@@ -396,7 +398,7 @@ def main() -> None:
     print(f"Frames per rollout: {num_frames}")
 
     for task in TASKS:
-        export_task(task, data_root, views, num_rollouts, num_frames, split_percentages, enable_wrist_follow_camera)
+        export_task(task, data_root, views, num_rollouts, num_frames, split_percentages, enable_wrist_follow_camera, seed)
 
 
 if __name__ == "__main__":
