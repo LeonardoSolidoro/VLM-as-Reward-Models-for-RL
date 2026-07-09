@@ -445,7 +445,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="PushCube-v1")
     parser.add_argument("--max-steps", type=int, default=300000)
-    parser.add_argument("--batch-size", type=int, default=256) # Can be 1024 for more stable gradients
+    parser.add_argument("--batch-size", type=int, default=1024) # Can be 1024 for more stable gradients
     parser.add_argument("--utd-ratio", type=int, default=1)
     parser.add_argument("--learning-starts", type=int, default=5000) # Can be 10000
     parser.add_argument("--resume", action="store_true", help="Resume training from the latest checkpoint if available")
@@ -454,7 +454,7 @@ def main():
     parser.add_argument("--no-deterministic", action="store_false", dest="deterministic", help="Disable deterministic operations")
 
     # Eval
-    parser.add_argument("--eval-freq", type=int, default=10000)
+    parser.add_argument("--eval-freq", type=int, default=5000)
     parser.add_argument("--eval-episodes", type=int, default=20)
     parser.add_argument("--target-success-rate", type=float, default=0.90)
     parser.add_argument("--save-dir", type=str, default="finetuning_output/cleanrl_crossq/weights")
