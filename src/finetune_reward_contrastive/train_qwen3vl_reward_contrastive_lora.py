@@ -334,6 +334,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dataloader-persistent-workers", action="store_true")
     parser.add_argument("--dataloader-pin-memory", action="store_true")
     parser.add_argument("--resume-from-checkpoint", default=None)
+    parser.add_argument("--deterministic", action="store_true")
+    parser.add_argument("--no-deterministic", action="store_false", dest="deterministic")
     parser.add_argument("--lora-r", type=int, default=16)
     parser.add_argument("--lora-alpha", type=int, default=32)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
@@ -346,7 +348,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    set_all_seeds(args.seed, deterministic=True)
+    set_all_seeds(args.seed, deterministic=args.deterministic)
     use_qlora = resolve_qlora_arg(args)
 
     processor = AutoProcessor.from_pretrained(args.model_id)
