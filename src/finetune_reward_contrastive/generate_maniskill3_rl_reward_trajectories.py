@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Sequence, Union
 import cv2
 import gymnasium as gym
 import h5py
+import mani_skill
 import mani_skill.envs
 import numpy as np
 import torch
@@ -71,11 +72,11 @@ def save_image(path: Path, image: np.ndarray) -> None:
         raise RuntimeError(f"Failed to write image: {path}")
 
 
-def make_env(task: str) -> gym.Env:
+def make_env(task: str, control_mode: str) -> gym.Env:
     return gym.make(
         task,
         obs_mode="state",
-        control_mode="pd_ee_delta_pos",
+        control_mode=control_mode,
         render_mode="rgb_array",
         reward_mode="normalized_dense",
         sim_backend="physx_cpu",
@@ -113,12 +114,57 @@ def update_wrist_follow_camera(env: gym.Env, task: str) -> None:
     cam.set_local_pose(pose.sp)
 
 
-def extract_reward(env: gym.Env) -> float:
-    obs = env.unwrapped.get_obs()
-    info = env.unwrapped.get_info()
-    action = torch.zeros(env.action_space.shape, device=env.unwrapped.device)
-    reward = env.unwrapped.get_reward(obs=obs, action=action, info=info)
-    return float(reward.cpu().item() if hasattr(reward, "cpu") else reward)
+def scalar_float(value: Any, context: str) -> float:
+    if isinstance(value, torch.Tensor):
+        if value.numel() != 1:
+            raise ValueError(f"Expected scalar tensor for {context}, got shape {tuple(value.shape)}")
+        return float(value.item())
+    return float(value)
+
+
+def validate_normalized_reward(reward: float, context: str) -> float:
+    if not np.isfinite(reward):
+        raise ValueError(f"Non-finite normalized dense reward for {context}: {reward}")
+    if reward < 0.0 or reward > 1.0:
+        raise ValueError(f"Normalized dense reward outside [0, 1] for {context}: {reward}")
+    return reward
+
+
+def replay_episode_rewards(
+    env: gym.Env,
+    episode: Dict[str, Any],
+    traj: h5py.Group,
+    task: str,
+) -> List[float]:
+    """Return the normalized reward associated with every recorded state.
+
+    rewards[0] is zero by convention because the initial state has no incoming
+    transition. rewards[t + 1] is ManiSkill's reward returned by env.step for
+    action t. Exact recorded states are restored after each step to prevent
+    replay drift while still allowing PhysX to refresh contact forces.
+    """
+    env.reset(**episode["reset_kwargs"])
+    initial_state = trajectory_utils.index_dict(traj["env_states"], 0)
+    env.unwrapped.set_state_dict(initial_state)
+
+    rewards = [0.0]
+    for action_idx, action in enumerate(traj["actions"]):
+        _, reward_value, _, _, _ = env.step(action)
+        reward = validate_normalized_reward(
+            scalar_float(reward_value, f"{task} action {action_idx}"),
+            f"{task} action {action_idx}",
+        )
+        rewards.append(reward)
+
+        next_state = trajectory_utils.index_dict(traj["env_states"], action_idx + 1)
+        env.unwrapped.set_state_dict(next_state)
+
+    expected_num_states = len(traj["actions"]) + 1
+    if len(rewards) != expected_num_states:
+        raise RuntimeError(
+            f"Replayed {len(rewards)} state rewards for {task}, expected {expected_num_states}"
+        )
+    return rewards
 
 
 def load_successful_episodes(demo_root: Path, task: str, num_rollouts: int) -> List[Dict[str, Any]]:
@@ -139,14 +185,22 @@ def export_states(
     env: gym.Env,
     task: str,
     states: Union[h5py.Dataset, List[Dict[str, Any]]],
+    state_rewards: Sequence[float],
     sampled_indices: Sequence[int],
     rollout_dir: Path,
     view: str,
     camera_mode: str,
     total_steps: int,
+    reward_source: str,
+    source_episode_id: int | None,
     states_are_list: bool = False,
 ) -> None:
     rollout_dir.mkdir(parents=True, exist_ok=True)
+    expected_num_states = total_steps + 1
+    if len(state_rewards) != expected_num_states:
+        raise ValueError(
+            f"{task} has {len(state_rewards)} state rewards, expected {expected_num_states}"
+        )
     rewards = []
 
     for frame_idx, state_idx in enumerate(sampled_indices):
@@ -159,9 +213,10 @@ def export_states(
             raise ValueError(f"Unsupported camera mode: {camera_mode}")
 
         image = render(env.unwrapped)
-        reward = extract_reward(env)
-        if reward < 0.0 or reward > 1.0:
-            raise ValueError(f"Normalized dense reward outside [0, 1]: {reward}")
+        reward = validate_normalized_reward(
+            float(state_rewards[state_idx]),
+            f"{task} state {state_idx}",
+        )
 
         rewards.append(round(reward, 6))
         save_image(rollout_dir / f"{view}_frame_{frame_idx:03d}.jpg", image)
@@ -173,8 +228,13 @@ def export_states(
         "task": task,
         "camera_mode": camera_mode,
         "reward_mode": "normalized_dense",
+        "reward_source": reward_source,
+        "initial_state_reward_convention": 0.0,
+        "mani_skill_version": mani_skill.__version__,
+        "source_episode_id": source_episode_id,
         "total_steps": total_steps,
         "source_state_indices": [int(idx) for idx in sampled_indices],
+        "frame_steps": [int(idx) for idx in sampled_indices],
     }
     with (rollout_dir / "metadata.json").open("w") as f:
         json.dump(metadata, f, indent=2)
@@ -216,7 +276,12 @@ def export_task_camera(
     if len(episodes) < needed_expert_episodes:
         raise ValueError(f"{task} has only {len(episodes)} successful episodes, need {needed_expert_episodes}")
 
-    env = make_env(task)
+    render_env = make_env(task, control_mode="pd_ee_delta_pos")
+    demo_control_modes = {episode["control_mode"] for episode in episodes}
+    if len(demo_control_modes) != 1:
+        raise ValueError(f"{task} demonstrations use multiple control modes: {sorted(demo_control_modes)}")
+    demo_control_mode = next(iter(demo_control_modes))
+    replay_env = make_env(task, control_mode=demo_control_mode)
     rng = np.random.default_rng(seed + sum(ord(ch) for ch in task))
     h5_path = demo_root / task / "motionplanning" / "trajectory.h5"
 
@@ -224,18 +289,22 @@ def export_task_camera(
         for rollout_idx in range(counts["expert"]):
             episode = episodes[rollout_idx]
             traj = h5[f"traj_{episode['episode_id']}"]
-            env.reset(**episode["reset_kwargs"])
+            state_rewards = replay_episode_rewards(replay_env, episode, traj, task)
+            render_env.reset(**episode["reset_kwargs"])
             num_states = len(traj["actions"]) + 1
             sampled = sample_indices(num_states, num_frames)
             export_states(
-                env=env,
+                env=render_env,
                 task=task,
                 states=traj["env_states"],
+                state_rewards=state_rewards,
                 sampled_indices=sampled,
                 rollout_dir=task_root / "expert" / f"rollout_{rollout_idx}",
                 view=view,
                 camera_mode=camera_mode,
                 total_steps=num_states - 1,
+                reward_source="replayed_env_step",
+                source_episode_id=int(episode["episode_id"]),
             )
 
         partial_start = counts["expert"]
@@ -243,38 +312,48 @@ def export_task_camera(
             rollout_idx = partial_start + i
             episode = episodes[rollout_idx]
             traj = h5[f"traj_{episode['episode_id']}"]
-            env.reset(**episode["reset_kwargs"])
+            state_rewards = replay_episode_rewards(replay_env, episode, traj, task)
+            render_env.reset(**episode["reset_kwargs"])
             num_states = len(traj["actions"]) + 1
             max_cutoff = num_frames + max(1, int((num_states - num_frames) * 2 / 3))
             cutoff = int(rng.integers(num_frames, max_cutoff + 1))
             sampled = sample_indices(cutoff, num_frames)
             export_states(
-                env=env,
+                env=render_env,
                 task=task,
                 states=traj["env_states"],
+                state_rewards=state_rewards,
                 sampled_indices=sampled,
                 rollout_dir=task_root / "partial" / f"rollout_{rollout_idx}",
                 view=view,
                 camera_mode=camera_mode,
                 total_steps=num_states - 1,
+                reward_source="replayed_env_step",
+                source_episode_id=int(episode["episode_id"]),
             )
 
         random_start = counts["expert"] + counts["partial"]
         for i in range(counts["random"]):
             rollout_idx = random_start + i
-            env.reset(seed=seed + rollout_idx)
-            env.action_space.seed(seed + rollout_idx)
-            random_states = [env.unwrapped.get_state_dict()]
-            momentum_action = env.action_space.sample()
-            target_action = env.action_space.sample()
+            render_env.reset(seed=seed + rollout_idx)
+            render_env.action_space.seed(seed + rollout_idx)
+            random_states = [render_env.unwrapped.get_state_dict()]
+            random_rewards = [0.0]
+            momentum_action = render_env.action_space.sample()
+            target_action = render_env.action_space.sample()
 
             while True:
                 if len(random_states) % 10 == 0:
-                    target_action = env.action_space.sample()
+                    target_action = render_env.action_space.sample()
                 momentum_action = 0.90 * momentum_action + 0.10 * target_action
-                action = np.clip(momentum_action, env.action_space.low, env.action_space.high)
-                _, _, terminated, truncated, _ = env.step(action)
-                random_states.append(env.unwrapped.get_state_dict())
+                action = np.clip(momentum_action, render_env.action_space.low, render_env.action_space.high)
+                _, reward_value, terminated, truncated, _ = render_env.step(action)
+                reward = validate_normalized_reward(
+                    scalar_float(reward_value, f"{task} random rollout {rollout_idx}"),
+                    f"{task} random rollout {rollout_idx}",
+                )
+                random_states.append(render_env.unwrapped.get_state_dict())
+                random_rewards.append(reward)
 
                 terminated_bool = bool(terminated.cpu().item()) if hasattr(terminated, "cpu") else bool(terminated)
                 truncated_bool = bool(truncated.cpu().item()) if hasattr(truncated, "cpu") else bool(truncated)
@@ -283,14 +362,17 @@ def export_task_camera(
 
             sampled = sample_indices(len(random_states), num_frames)
             export_states(
-                env=env,
+                env=render_env,
                 task=task,
                 states=random_states,
+                state_rewards=random_rewards,
                 sampled_indices=sampled,
                 rollout_dir=task_root / "random" / f"rollout_{rollout_idx}",
                 view=view,
                 camera_mode=camera_mode,
                 total_steps=len(random_states) - 1,
+                reward_source="collected_env_step",
+                source_episode_id=None,
                 states_are_list=True,
             )
 
@@ -300,7 +382,8 @@ def export_task_camera(
             rollout_idx = regressing_start + i
             episode = episodes[regressing_episode_start + i]
             traj = h5[f"traj_{episode['episode_id']}"]
-            env.reset(**episode["reset_kwargs"])
+            state_rewards = replay_episode_rewards(replay_env, episode, traj, task)
+            render_env.reset(**episode["reset_kwargs"])
             num_states = len(traj["actions"]) + 1
 
             min_turn = num_frames
@@ -318,17 +401,21 @@ def export_task_camera(
             sampled = np.concatenate([forward_indices, np.asarray(backward_indices, dtype=int)])
 
             export_states(
-                env=env,
+                env=render_env,
                 task=task,
                 states=traj["env_states"],
+                state_rewards=state_rewards,
                 sampled_indices=sampled,
                 rollout_dir=task_root / "regressing" / f"rollout_{rollout_idx}",
                 view=view,
                 camera_mode=camera_mode,
                 total_steps=num_states - 1,
+                reward_source="replayed_env_step",
+                source_episode_id=int(episode["episode_id"]),
             )
 
-    env.close()
+    replay_env.close()
+    render_env.close()
     print(f"{task} {camera_mode}: saved rollouts to {task_root}")
 
 
@@ -379,4 +466,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

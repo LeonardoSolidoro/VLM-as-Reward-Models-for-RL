@@ -14,9 +14,33 @@ IMAGE_PLACEHOLDER = "[IMG]"
 NUM_QUERY_FRAMES = 20
 TEXT_KEYS = ("input_ids", "attention_mask", "mm_token_type_ids", "labels")
 
-REWARD_PROMPT_TEMPLATE = """You are an expert roboticist tasked to predict normalized dense environment rewards for frames of a robot performing the task: {task_description}
+TASK_REWARD_GUIDANCE = {
+    "PickCube-v1": (
+        "The reward combines gripper-to-cube proximity, a binary two-finger grasp-contact bonus, "
+        "cube-to-goal proximity while grasped, and robot stillness when the cube is at the goal. "
+        "A successful placement overrides the reward to 100%."
+    ),
+    "PushCube-v1": (
+        "The reward combines gripper proximity to the preferred pushing pose and, after that pose is "
+        "reached, cube-to-goal proximity plus keeping the cube on the table. Reaching success overrides "
+        "the reward to 100%."
+    ),
+    "PegInsertionSide-v1": (
+        "The reward combines gripper-to-peg proximity, a binary two-finger grasp-contact bonus, peg-to-hole "
+        "alignment while grasped, and insertion proximity after the alignment threshold is met. Successful "
+        "insertion overrides the reward to 100%."
+    ),
+}
 
-The normalized dense reward is between 0% and 100%, where 100% is the maximum task reward. The frames may be presented in arbitrary order, so judge each frame independently.
+REWARD_PROMPT_TEMPLATE = """You are an expert roboticist predicting ManiSkill normalized dense environment rewards from individual robot-scene frames.
+
+Task: {task}
+Task objective: {task_description}
+Task-specific reward structure: {reward_guidance}
+
+The target is ManiSkill's instantaneous shaped control reward, normalized to the range 0% to 100%. It is not a linear task-completion percentage. It can change nonlinearly or decrease, and it can jump at contact, stage-threshold, and success events. Each non-initial frame is paired with the reward returned after the action that produced that recorded state. Some reward inputs, especially contact forces and robot velocity, are hidden from a single RGB frame, so estimate them only from visible evidence rather than assuming a perfectly observable or monotonic score. For an initial reset frame before any action, use the dataset convention 0.00% because no transition reward has occurred.
+
+The frames may be presented in arbitrary order. Judge each frame independently rather than assuming that later-listed frames have higher rewards.
 
 For each frame, format your response exactly as follows:
 Frame X:
@@ -53,8 +77,13 @@ def parse_reward_percentages(text: str) -> List[float]:
 
 def build_user_prompt(sample: Dict[str, Any]) -> str:
     frames_list = build_frames_list(len(sample["images"]))
+    task = sample["task"]
+    if task not in TASK_REWARD_GUIDANCE:
+        raise ValueError(f"Missing reward guidance for task: {task}")
     return REWARD_PROMPT_TEMPLATE.format(
+        task=task,
         task_description=sample["task_description"],
+        reward_guidance=TASK_REWARD_GUIDANCE[task],
         frames_list=frames_list,
     )
 
@@ -272,4 +301,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
