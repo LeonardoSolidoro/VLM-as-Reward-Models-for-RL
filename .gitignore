@@ -27,4 +27,4 @@ VLM_RM/
 .env
 __pycache__/
 .vscode/
-wandb/
+wandb/reward_contrastive.tar.gz

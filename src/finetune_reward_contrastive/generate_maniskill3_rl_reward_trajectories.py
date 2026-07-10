@@ -66,6 +66,12 @@ def render(env: gym.Env) -> np.ndarray:
     return image.astype(np.uint8)
 
 
+def render_warmed(env: gym.Env) -> np.ndarray:
+    """Render twice so SAPIEN refreshes the human-render camera after state restore."""
+    render(env)
+    return render(env)
+
+
 def save_image(path: Path, image: np.ndarray) -> None:
     ok = cv2.imwrite(str(path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
     if not ok:
@@ -212,7 +218,7 @@ def export_states(
         elif camera_mode != "static":
             raise ValueError(f"Unsupported camera mode: {camera_mode}")
 
-        image = render(env.unwrapped)
+        image = render_warmed(env.unwrapped)
         reward = validate_normalized_reward(
             float(state_rewards[state_idx]),
             f"{task} state {state_idx}",

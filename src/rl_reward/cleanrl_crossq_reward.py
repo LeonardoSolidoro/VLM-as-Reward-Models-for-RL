@@ -17,6 +17,12 @@ from peft import PeftModel
 from transformers import AutoModelForImageTextToText, AutoProcessor, BitsAndBytesConfig
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+from src.finetune_reward_contrastive.qwen_reward_contrastive_dataset import (
+    REWARD_PROMPT_TEMPLATE,
+    TASK_REWARD_GUIDANCE,
+    build_frames_list,
+    build_user_content,
+)
 from src.rl.cleanrl_crossq import (
     PolicyNetwork,
     QNetwork,
@@ -25,21 +31,6 @@ from src.rl.cleanrl_crossq import (
     get_state_dict,
     set_seed,
 )
-
-
-IMAGE_PLACEHOLDER = "[IMG]"
-REWARD_PROMPT_TEMPLATE = """You are an expert roboticist tasked to predict normalized dense environment rewards for frames of a robot performing the task: {task_description}
-
-The normalized dense reward is between 0% and 100%, where 100% is the maximum task reward. The frames may be presented in arbitrary order, so judge each frame independently.
-
-For each frame, format your response exactly as follows:
-Frame X:
-Normalized Dense Reward: <score>XX.XX%</score>
-
-Please provide your predictions for the following frames:
-{frames_list}
-"""
-
 
 class StreamToLogger:
     def __init__(self, logger: logging.Logger, level: int = logging.INFO):
@@ -52,26 +43,6 @@ class StreamToLogger:
 
     def flush(self) -> None:
         pass
-
-
-def build_frames_list(num_frames: int) -> str:
-    return "\n".join(f"Frame {idx}: {IMAGE_PLACEHOLDER}" for idx in range(1, num_frames + 1))
-
-
-def build_user_content(prompt: str, images: List[Image.Image]) -> List[Dict[str, Any]]:
-    parts = prompt.split(IMAGE_PLACEHOLDER)
-    if len(parts) - 1 != len(images):
-        raise ValueError(f"Prompt has {len(parts) - 1} image placeholders but got {len(images)} images")
-
-    content = []
-    for text, image in zip(parts[:-1], images):
-        if text:
-            content.append({"type": "text", "text": text})
-        content.append({"type": "image", "image": image})
-    if parts[-1]:
-        content.append({"type": "text", "text": parts[-1]})
-    return content
-
 
 def parse_reward_percentages(text: str) -> List[float]:
     score_matches = re.findall(r"<score>\s*([+-]?\d+(?:\.\d+)?)\s*%?\s*</score>", text, flags=re.IGNORECASE)
@@ -107,6 +78,7 @@ def annotate_reward_episodes(
     episodes_data: List[List[Dict[str, Any]]],
     model: torch.nn.Module,
     processor: Any,
+    task: str,
     task_description: str,
     device: torch.device,
     context_len: int,
@@ -123,7 +95,9 @@ def annotate_reward_episodes(
             chunk = episode_data[start:start + context_len]
             images = [Image.fromarray(item["next_image"]) for item in chunk]
             prompt = REWARD_PROMPT_TEMPLATE.format(
+                task=task,
                 task_description=task_description,
+                reward_guidance=TASK_REWARD_GUIDANCE[task],
                 frames_list=build_frames_list(len(images)),
             )
             chunk_messages.append([{"role": "user", "content": build_user_content(prompt, images)}])
@@ -410,6 +384,7 @@ def main() -> None:
                         episodes_data=unannotated_episodes,
                         model=model,
                         processor=processor,
+                        task=args.task,
                         task_description=task_description,
                         device=device,
                         context_len=args.vlm_context_len,
@@ -544,4 +519,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
