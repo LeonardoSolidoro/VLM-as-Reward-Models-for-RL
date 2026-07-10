@@ -28,3 +28,4 @@ VLM_RM/
 __pycache__/
 .vscode/
 wandb/reward_contrastive.tar.gz
+*.pth
