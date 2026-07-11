@@ -24,7 +24,12 @@ from peft import PeftModel
 
 # Ensure src is in the python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-from src.qwen_progress_dataset import build_frames_list, build_user_content
+from src.finetune_reward_contrastive.qwen_reward_contrastive_dataset import (
+    REWARD_PROMPT_TEMPLATE,
+    TASK_REWARD_GUIDANCE,
+    build_frames_list,
+    build_user_content,
+)
 
 def set_seed(seed: int, deterministic: bool = False):
     random.seed(seed)
@@ -218,12 +223,18 @@ class SimpleReplayBuffer:
     def __len__(self) -> int:
         return len(self.buffer)
 
-def parse_percentages(text: str) -> List[float]:
-    values = []
-    for match in re.findall(r"(\d+(?:\.\d+)?)\s*%", text):
-        value = float(match) / 100.0
-        values.append(value)
-    return values
+def parse_reward_percentages(text: str) -> List[float]:
+    score_matches = re.findall(r"<score>\s*([+-]?\d+(?:\.\d+)?)\s*%?\s*</score>", text, flags=re.IGNORECASE)
+    if score_matches:
+        return [float(value) / 100.0 for value in score_matches]
+
+    percent_matches = re.findall(r"([+-]?\d+(?:\.\d+)?)\s*%", text)
+    return [float(value) / 100.0 for value in percent_matches]
+
+def clip_reward(value: float, episode_idx: int, transition_idx: int) -> float:
+    if value < 0.0 or value > 1.0:
+        print(f"[VLM Reward] Clipping predicted reward for episode {episode_idx}, transition {transition_idx}: {value:.4f}")
+    return float(np.clip(value, 0.0, 1.0))
 
 def check_vlm_diagnostics(percentages: List[float], shuffled_indices: List[int], ep_idx: Union[int, str] = ""):
     # Align percentages with their actual episode steps and sort chronologically
@@ -259,7 +270,7 @@ def check_vlm_diagnostics(percentages: List[float], shuffled_indices: List[int],
         else:
             consecutive_identical = 1
 
-def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, processor: Any, task_description: str, prompt_template: str, device: torch.device, context_len: int = 20, base_episode_idx: int = 0, use_difference_rewards: bool = False) -> List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]:
+def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, processor: Any, task_name: str, task_description: str, device: torch.device, context_len: int = 20, base_episode_idx: int = 0, use_difference_rewards: bool = False, vlm_reward_scale: float = 1.0) -> List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]:
     """
     Synchronously annotates a batch of episodes using the VLM, computes PBRS rewards, 
     and returns a flattened list of (state, action, reward, next_state, done) transitions.
@@ -291,7 +302,12 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
         all_pil_images = [pil_s0] + pil_query_images
     
         frames_list = build_frames_list(len(pil_query_images))
-        user_prompt = prompt_template.format(task_description=task_description, frames_list=frames_list)
+        user_prompt = REWARD_PROMPT_TEMPLATE.format(
+            task=task_name,
+            task_description=task_description,
+            reward_guidance=TASK_REWARD_GUIDANCE[task_name],
+            frames_list=frames_list
+        )
         content = build_user_content(user_prompt, all_pil_images)
         messages = [{"role": "user", "content": content}]
         batch_messages.append(messages)
@@ -320,8 +336,10 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
 
     all_annotated_transitions = []
 
+    abs_errors = []
+
     for batch_idx, (text, meta) in enumerate(zip(generated_texts, batch_metadata)):
-        percentages = parse_percentages(text)
+        percentages = parse_reward_percentages(text)
         shuffled_indices = meta["shuffled_indices"]
         episode_data = meta["episode_data"]
         n_states = meta["n_states"]
@@ -341,7 +359,7 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
 
         progress = [None] * n_states
         for idx, prog in zip(shuffled_indices, percentages):
-            progress[idx] = prog
+            progress[idx] = clip_reward(prog, current_ep_idx, idx)
         
         known_indices = [i for i, p in enumerate(progress) if p is not None]
         if 0 not in known_indices:
@@ -365,13 +383,18 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
             
             # Difference Reward
             if use_difference_rewards:
-                r_t = (progress[t_idx + 1] - progress[t_idx])
+                r_t = (progress[t_idx + 1] - progress[t_idx]) * vlm_reward_scale
             else:
-                r_t = progress[t_idx]
+                r_t = progress[t_idx] * vlm_reward_scale
+            
+            abs_errors.append(abs(r_t - item["task_reward"]))
             
             all_annotated_transitions.append((
                 item["state"], item["action"], r_t, item["next_state"], item["done"]
             ))
+
+    if abs_errors:
+        print(f"[VLM Reward] Batch env-reward MAE diagnostic: {np.mean(abs_errors):.4f}")
 
     return all_annotated_transitions
 
@@ -457,7 +480,7 @@ def main():
     parser.add_argument("--eval-freq", type=int, default=5000)
     parser.add_argument("--eval-episodes", type=int, default=20)
     parser.add_argument("--target-success-rate", type=float, default=0.90)
-    parser.add_argument("--save-dir", type=str, default="finetuning_output/cleanrl_crossq/weights")
+    parser.add_argument("--save-dir", type=str, default="finetuning_output/cleanrl_crossq_contrastive/weights")
     parser.add_argument("--reward-stage1", type=float, default=5.0, help="First reward milestone for checkpointing")
     parser.add_argument("--reward-stage2", type=float, default=10.0, help="Second reward milestone for checkpointing")
 
@@ -465,11 +488,12 @@ def main():
     parser.add_argument("--use-env-rewards", action="store_true", help="Bypass VLM and use native env dense rewards for debugging")
     parser.add_argument("--moving-mounted-camera", action="store_true", help="Enable the wrist-follow camera (moving mounted) instead of the default static camera")
     parser.add_argument("--model-id", type=str, default="Qwen/Qwen3-VL-8B-Instruct")
-    parser.add_argument("--adapter-dir", type=str, default="outputs/qwen3vl-progress-lora-tiny")
+    parser.add_argument("--adapter-dir", type=str, default="finetuning_output/Qwen3-VL-8B-Reward-Contrastive/lora_weights")
     default_device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     parser.add_argument("--device", type=str, default=default_device)
     parser.add_argument("--vlm-context-len", type=int, default=20)
     parser.add_argument("--vlm-batch-size", type=int, default=1) # Max 4, less is best for stability!
+    parser.add_argument("--vlm-reward-scale", type=float, default=1.0)
     parser.add_argument("--difference-rewards", action="store_true", help="Use difference in progress instead of absolute progress as reward")
     parser.add_argument("--4bit-quant", dest="quant_4bit", action="store_true", help="Enable 4-bit quantization for the VLM")
     parser.add_argument("--bf16", action="store_true", help="Use bfloat16 precision instead of float16")
@@ -563,7 +587,6 @@ def main():
         config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../configs/configs.yaml"))
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
-        prompt_template = config["finetuning_prompt_template"]
         task_description = config["tasks"][args.task]["description"]
     else:
         print("Bypassing VLM (--use-env-rewards is enabled).")
@@ -711,10 +734,11 @@ def main():
                     print(f"Batch full! Annotating {len(unannotated_episodes)} episodes at step {global_step}...")
                     # Annotate with VLM
                     annotated_transitions = annotate_batch(
-                        unannotated_episodes, model, processor, task_description, prompt_template, args.device, 
+                        unannotated_episodes, model, processor, args.task, task_description, args.device, 
                         context_len=args.vlm_context_len,
                         base_episode_idx=(total_episodes_completed - len(unannotated_episodes)),
-                        use_difference_rewards=args.difference_rewards
+                        use_difference_rewards=args.difference_rewards,
+                        vlm_reward_scale=args.vlm_reward_scale
                     )
                 
                 # Push to replay buffer
