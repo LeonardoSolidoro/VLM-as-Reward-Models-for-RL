@@ -8,9 +8,8 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 from PIL import Image
-from torch.utils.data import DataLoader, Dataset, TensorDataset
+from torch.utils.data import DataLoader, Dataset, TensorDataset, WeightedRandomSampler
 from tqdm import tqdm
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -188,14 +187,14 @@ def load_or_extract_cache(
     return cache
 
 
-def calculate_bin_weights(rewards: torch.Tensor, max_weight: float) -> torch.Tensor:
+def calculate_balanced_sample_weights(rewards: torch.Tensor) -> torch.Tensor:
     boundaries = torch.tensor(REWARD_BIN_BOUNDARIES, dtype=rewards.dtype)
     bin_indices = torch.bucketize(rewards, boundaries, right=True)
     counts = torch.bincount(bin_indices, minlength=len(REWARD_BIN_BOUNDARIES) + 1).float()
     if torch.any(counts == 0):
         raise ValueError(f"At least one reward bin is empty: {counts.tolist()}")
-    weights = rewards.numel() / (counts.numel() * counts)
-    return torch.clamp(weights, max=max_weight)
+    bin_weights = 1.0 / counts
+    return bin_weights[bin_indices]
 
 
 def evaluate_head(
@@ -224,6 +223,10 @@ def evaluate_head(
         if not torch.any(mask):
             raise ValueError(f"No examples in evaluation reward bin {label}")
         metrics[f"mae_{label}"] = float(absolute_errors[mask].mean().item())
+
+    metrics["macro_bin_mae"] = float(
+        np.mean([metrics[f"mae_{label}"] for label in labels])
+    )
 
     views = cache["views"]
     for view in ["moving", "static"]:
@@ -259,8 +262,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
-    parser.add_argument("--huber-beta", type=float, default=0.05)
-    parser.add_argument("--max-sample-weight", type=float, default=10.0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--deterministic", action="store_true")
     parser.add_argument("--use-both-views", action=argparse.BooleanOptionalAction, default=True)
@@ -292,38 +293,52 @@ def main() -> None:
         f"test={len(test_dataset)}"
     )
 
-    processor, vision_module, pooler, spatial_merge_size = load_frozen_visual_components(
-        model_id=args.model_id,
-        adapter_dir=args.adapter_dir,
-        device=device,
-        dtype=dtype,
-    )
-
     split_datasets = {
         "train": train_dataset,
         "val": val_dataset,
         "test": test_dataset,
     }
     caches: Dict[str, Dict[str, Any]] = {}
-    for split_name, dataset in split_datasets.items():
-        caches[split_name] = load_or_extract_cache(
-            cache_path=cache_dir / f"{split_name}.pth",
-            rebuild_cache=args.rebuild_cache,
-            dataset=dataset,
-            processor=processor,
-            vision_module=vision_module,
-            pooler=pooler,
-            spatial_merge_size=spatial_merge_size,
+    cache_paths = {
+        split_name: cache_dir / f"{split_name}.pth"
+        for split_name in split_datasets
+    }
+    all_caches_exist = all(path.exists() for path in cache_paths.values())
+    if all_caches_exist and not args.rebuild_cache:
+        for split_name, dataset in split_datasets.items():
+            cache = torch.load(cache_paths[split_name], map_location="cpu", weights_only=False)
+            if cache["embeddings"].shape[0] != len(dataset):
+                raise ValueError(
+                    f"Cached {split_name} example count {cache['embeddings'].shape[0]} does not match "
+                    f"dataset length {len(dataset)}. Re-run with --rebuild-cache."
+                )
+            caches[split_name] = cache
+            print(f"Loaded cached {split_name} embeddings from {cache_paths[split_name]}")
+    else:
+        processor, vision_module, pooler, spatial_merge_size = load_frozen_visual_components(
+            model_id=args.model_id,
+            adapter_dir=args.adapter_dir,
             device=device,
             dtype=dtype,
-            batch_size=args.embedding_batch_size,
-            num_workers=args.num_workers,
         )
-
-    del vision_module
-    del pooler
-    if device.type == "cuda":
-        torch.cuda.empty_cache()
+        for split_name, dataset in split_datasets.items():
+            caches[split_name] = load_or_extract_cache(
+                cache_path=cache_paths[split_name],
+                rebuild_cache=args.rebuild_cache,
+                dataset=dataset,
+                processor=processor,
+                vision_module=vision_module,
+                pooler=pooler,
+                spatial_merge_size=spatial_merge_size,
+                device=device,
+                dtype=dtype,
+                batch_size=args.embedding_batch_size,
+                num_workers=args.num_workers,
+            )
+        del vision_module
+        del pooler
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
 
     train_embeddings = caches["train"]["embeddings"]
     train_rewards = caches["train"]["rewards"]
@@ -334,19 +349,24 @@ def main() -> None:
         lr=args.learning_rate,
         weight_decay=args.weight_decay,
     )
-    bin_weights = calculate_bin_weights(train_rewards, args.max_sample_weight).to(device)
     train_dataset_cached = TensorDataset(train_embeddings, train_rewards)
     generator = torch.Generator().manual_seed(args.seed)
+    sample_weights = calculate_balanced_sample_weights(train_rewards)
+    sampler = WeightedRandomSampler(
+        weights=sample_weights,
+        num_samples=len(train_dataset_cached),
+        replacement=True,
+        generator=generator,
+    )
     train_loader = DataLoader(
         train_dataset_cached,
         batch_size=args.head_batch_size,
-        shuffle=True,
-        generator=generator,
+        sampler=sampler,
     )
 
-    best_val_mae = float("inf")
-    best_checkpoint_path = output_dir / "best_reward_head.pth"
-    boundaries = torch.tensor(REWARD_BIN_BOUNDARIES, device=device)
+    best_val_macro_mae = float("inf")
+    best_checkpoint_path = output_dir / "best_balanced_reward_head.pth"
+    final_checkpoint_path = output_dir / "final_balanced_reward_head.pth"
 
     for epoch in range(1, args.epochs + 1):
         head.train()
@@ -356,14 +376,7 @@ def main() -> None:
             embeddings = embeddings.to(device)
             rewards = rewards.to(device)
             predictions = head(embeddings).squeeze(1)
-            loss_per_example = F.smooth_l1_loss(
-                predictions,
-                rewards,
-                reduction="none",
-                beta=args.huber_beta,
-            )
-            sample_weights = bin_weights[torch.bucketize(rewards, boundaries, right=True)]
-            loss = (loss_per_example * sample_weights).mean()
+            loss = torch.mean((predictions - rewards) ** 2)
 
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
@@ -373,14 +386,18 @@ def main() -> None:
             example_count += embeddings.shape[0]
 
         average_loss = epoch_loss / example_count
+        train_metrics = evaluate_head(head, caches["train"], device, args.head_batch_size)
         val_metrics = evaluate_head(head, caches["val"], device, args.head_batch_size)
         print(
             f"Epoch {epoch:03d}/{args.epochs} | train_loss={average_loss:.6f} | "
-            f"val_mae={val_metrics['mae']:.6f}"
+            f"train_macro_mae={train_metrics['macro_bin_mae']:.6f} | "
+            f"val_mae={val_metrics['mae']:.6f} | "
+            f"val_macro_mae={val_metrics['macro_bin_mae']:.6f} | "
+            f"val_success_mae={val_metrics['mae_0.9-1.0']:.6f}"
         )
 
-        if val_metrics["mae"] < best_val_mae:
-            best_val_mae = val_metrics["mae"]
+        if val_metrics["macro_bin_mae"] < best_val_macro_mae:
+            best_val_macro_mae = val_metrics["macro_bin_mae"]
             checkpoint = {
                 "task": args.task,
                 "model_id": args.model_id,
@@ -392,10 +409,32 @@ def main() -> None:
                 "optimizer_state_dict": optimizer.state_dict(),
                 "epoch": epoch,
                 "train_loss": average_loss,
+                "train_metrics": train_metrics,
                 "val_metrics": val_metrics,
+                "selection_metric": "macro_bin_mae",
                 "seed": args.seed,
             }
             torch.save(checkpoint, best_checkpoint_path)
+
+    final_train_metrics = evaluate_head(head, caches["train"], device, args.head_batch_size)
+    final_val_metrics = evaluate_head(head, caches["val"], device, args.head_batch_size)
+    final_checkpoint = {
+        "task": args.task,
+        "model_id": args.model_id,
+        "adapter_dir": os.path.abspath(args.adapter_dir),
+        "input_dim": input_dim,
+        "hidden_dim": args.hidden_dim,
+        "dropout": args.dropout,
+        "head_state_dict": head.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "epoch": args.epochs,
+        "train_loss": average_loss,
+        "train_metrics": final_train_metrics,
+        "val_metrics": final_val_metrics,
+        "selection_metric": "final_epoch",
+        "seed": args.seed,
+    }
+    torch.save(final_checkpoint, final_checkpoint_path)
 
     best_checkpoint = torch.load(best_checkpoint_path, map_location=device, weights_only=False)
     head.load_state_dict(best_checkpoint["head_state_dict"])
@@ -404,6 +443,7 @@ def main() -> None:
     print(f"Best checkpoint: {best_checkpoint_path} (epoch {best_checkpoint['epoch']})")
     print_metrics("Validation", val_metrics)
     print_metrics("Test", test_metrics)
+    print(f"Final checkpoint: {final_checkpoint_path}")
 
     metrics_path = output_dir / "metrics.json"
     with metrics_path.open("w") as handle:
@@ -412,6 +452,8 @@ def main() -> None:
                 "task": args.task,
                 "checkpoint": str(best_checkpoint_path),
                 "best_epoch": best_checkpoint["epoch"],
+                "selection_metric": best_checkpoint["selection_metric"],
+                "training": best_checkpoint["train_metrics"],
                 "validation": val_metrics,
                 "test": test_metrics,
             },
