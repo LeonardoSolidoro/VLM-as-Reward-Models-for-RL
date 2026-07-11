@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Sequence, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from PIL import Image
 from peft import PeftModel
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
@@ -165,7 +166,7 @@ def calculate_sample_weights(
     return weights
 
 
-def forward_rewards(
+def forward_reward_logits(
     vision_module: nn.Module,
     pooler: AttentionalPooler,
     head: RewardHead,
@@ -181,7 +182,7 @@ def forward_rewards(
         pooler=pooler,
         spatial_merge_size=spatial_merge_size,
     )
-    return head(pooled).squeeze(1)
+    return head.forward_logits(pooled).squeeze(1)
 
 
 def evaluate(
@@ -203,7 +204,7 @@ def evaluate(
         for pixel_values, image_grid_thw, rewards, batch_sources, _ in loader:
             pixel_values = pixel_values.to(device=device, dtype=dtype, non_blocking=True)
             image_grid_thw = image_grid_thw.to(device=device, non_blocking=True)
-            predicted = forward_rewards(
+            logits = forward_reward_logits(
                 vision_module,
                 pooler,
                 head,
@@ -211,6 +212,7 @@ def evaluate(
                 image_grid_thw,
                 spatial_merge_size,
             )
+            predicted = torch.sigmoid(logits)
             predictions.append(predicted.cpu())
             targets.append(rewards)
             sources.extend(batch_sources)
@@ -218,7 +220,13 @@ def evaluate(
     predicted_rewards = torch.cat(predictions)
     target_rewards = torch.cat(targets)
     absolute_errors = torch.abs(predicted_rewards - target_rewards)
-    metrics: Dict[str, float] = {"mae": float(absolute_errors.mean().item())}
+    metrics: Dict[str, float] = {
+        "mae": float(absolute_errors.mean().item()),
+        "prediction_mean": float(predicted_rewards.mean().item()),
+        "prediction_std": float(predicted_rewards.std(unbiased=False).item()),
+        "prediction_min": float(predicted_rewards.min().item()),
+        "prediction_max": float(predicted_rewards.max().item()),
+    }
 
     boundaries = torch.tensor(REWARD_BIN_BOUNDARIES, dtype=target_rewards.dtype)
     bin_indices = torch.bucketize(target_rewards, boundaries, right=True)
@@ -246,11 +254,16 @@ def evaluate(
     return metrics
 
 
-def selection_score(metrics: Dict[str, float]) -> float:
+def selection_score(
+    metrics: Dict[str, float],
+    success_weight: float,
+    false_positive_weight: float,
+) -> float:
     return (
         metrics["macro_bin_mae"]
         + metrics["mae_online"]
-        + metrics["low_reward_false_positive_rate"]
+        + success_weight * metrics["mae_0.9-1.0"]
+        + false_positive_weight * metrics["low_reward_false_positive_rate"]
     )
 
 
@@ -350,11 +363,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--gradient-accumulation-steps", type=int, default=4)
     parser.add_argument("--vision-learning-rate", type=float, default=1e-5)
-    parser.add_argument("--head-learning-rate", type=float, default=1e-4)
+    parser.add_argument("--head-learning-rate", type=float, default=3e-5)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--balance-exponent", type=float, default=0.5)
-    parser.add_argument("--online-weight", type=float, default=2.0)
-    parser.add_argument("--hard-negative-weight", type=float, default=4.0)
+    parser.add_argument("--online-weight", type=float, default=1.5)
+    parser.add_argument("--hard-negative-weight", type=float, default=2.0)
+    parser.add_argument("--success-selection-weight", type=float, default=1.0)
+    parser.add_argument("--false-positive-selection-weight", type=float, default=0.25)
+    parser.add_argument("--minimum-prediction-std", type=float, default=1e-4)
+    parser.add_argument("--max-grad-norm", type=float, default=1.0)
     parser.add_argument("--num-workers", type=int, default=8)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--deterministic", action="store_true")
@@ -372,6 +389,12 @@ def main() -> None:
         raise ValueError("--balance-exponent must be in [0, 1]")
     if args.online_weight <= 0.0 or args.hard_negative_weight <= 0.0:
         raise ValueError("Sampling weights must be positive")
+    if args.success_selection_weight < 0.0 or args.false_positive_selection_weight < 0.0:
+        raise ValueError("Selection weights must be non-negative")
+    if args.minimum_prediction_std <= 0.0:
+        raise ValueError("--minimum-prediction-std must be positive")
+    if args.max_grad_norm <= 0.0:
+        raise ValueError("--max-grad-norm must be positive")
 
     set_seed(args.seed, args.deterministic)
     device = torch.device(args.device)
@@ -456,9 +479,49 @@ def main() -> None:
         ],
         weight_decay=args.weight_decay,
     )
+    trainable_parameters = (
+        vision_lora_parameters
+        + list(pooler.parameters())
+        + list(head.parameters())
+    )
 
-    best_score = float("inf")
     best_training_state_path = output_dir / "best_joint_training_state.pth"
+    initial_val_metrics = evaluate(
+        vision_module,
+        pooler,
+        head,
+        val_loader,
+        spatial_merge_size,
+        device,
+        dtype,
+    )
+    if initial_val_metrics["prediction_std"] < args.minimum_prediction_std:
+        raise RuntimeError(
+            "The initial reward model is already collapsed: "
+            f"prediction_std={initial_val_metrics['prediction_std']:.8f}"
+        )
+    best_score = selection_score(
+        initial_val_metrics,
+        args.success_selection_weight,
+        args.false_positive_selection_weight,
+    )
+    print_metrics("Initial validation", initial_val_metrics)
+    print(f"Initial selection score: {best_score:.6f}")
+    torch.save(
+        {
+            "adapter_trainable_state_dict": trainable_adapter_state(adapted_model),
+            "pooler_state_dict": pooler.state_dict(),
+            "head_state_dict": head.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "epoch": 0,
+            "train_loss": None,
+            "val_metrics": initial_val_metrics,
+            "selection_score": best_score,
+            "seed": args.seed,
+        },
+        best_training_state_path,
+    )
+
     for epoch in range(1, args.epochs + 1):
         vision_module.train()
         pooler.train()
@@ -474,7 +537,7 @@ def main() -> None:
             pixel_values = pixel_values.to(device=device, dtype=dtype, non_blocking=True)
             image_grid_thw = image_grid_thw.to(device=device, non_blocking=True)
             rewards = rewards.to(device=device, non_blocking=True)
-            predictions = forward_rewards(
+            logits = forward_reward_logits(
                 vision_module,
                 pooler,
                 head,
@@ -482,11 +545,12 @@ def main() -> None:
                 image_grid_thw,
                 spatial_merge_size,
             )
-            unscaled_loss = torch.mean((predictions - rewards) ** 2)
+            unscaled_loss = F.binary_cross_entropy_with_logits(logits, rewards)
             loss = unscaled_loss / args.gradient_accumulation_steps
             loss.backward()
 
             if batch_index % args.gradient_accumulation_steps == 0 or batch_index == len(train_loader):
+                torch.nn.utils.clip_grad_norm_(trainable_parameters, args.max_grad_norm)
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
 
@@ -503,10 +567,22 @@ def main() -> None:
             device,
             dtype,
         )
-        current_score = selection_score(val_metrics)
+        if val_metrics["prediction_std"] < args.minimum_prediction_std:
+            raise RuntimeError(
+                f"Reward predictions collapsed after epoch {epoch}: "
+                f"prediction_mean={val_metrics['prediction_mean']:.8f}, "
+                f"prediction_std={val_metrics['prediction_std']:.8f}"
+            )
+        current_score = selection_score(
+            val_metrics,
+            args.success_selection_weight,
+            args.false_positive_selection_weight,
+        )
         print(
             f"Epoch {epoch}/{args.epochs} | train_loss={average_loss:.6f} | "
             f"val_mae={val_metrics['mae']:.6f} | val_online_mae={val_metrics['mae_online']:.6f} | "
+            f"prediction_mean={val_metrics['prediction_mean']:.6f} | "
+            f"prediction_std={val_metrics['prediction_std']:.6f} | "
             f"false_positive_rate={val_metrics['low_reward_false_positive_rate']:.6f} | "
             f"selection_score={current_score:.6f}"
         )
@@ -522,6 +598,8 @@ def main() -> None:
                 "train_loss": average_loss,
                 "val_metrics": val_metrics,
                 "selection_score": current_score,
+                "success_selection_weight": args.success_selection_weight,
+                "false_positive_selection_weight": args.false_positive_selection_weight,
                 "seed": args.seed,
             }
             torch.save(checkpoint, best_training_state_path)
@@ -562,6 +640,8 @@ def main() -> None:
         "val_metrics": best_state["val_metrics"],
         "test_metrics": test_metrics,
         "selection_score": best_state["selection_score"],
+        "success_selection_weight": args.success_selection_weight,
+        "false_positive_selection_weight": args.false_positive_selection_weight,
         "seed": args.seed,
     }
     torch.save(reward_head_checkpoint, reward_head_output_path)
@@ -574,6 +654,9 @@ def main() -> None:
                 "checkpoint": str(reward_head_output_path),
                 "adapter_dir": str(adapter_output_dir),
                 "best_epoch": best_state["epoch"],
+                "selection_score": best_state["selection_score"],
+                "success_selection_weight": args.success_selection_weight,
+                "false_positive_selection_weight": args.false_positive_selection_weight,
                 "validation": best_state["val_metrics"],
                 "test": test_metrics,
             },

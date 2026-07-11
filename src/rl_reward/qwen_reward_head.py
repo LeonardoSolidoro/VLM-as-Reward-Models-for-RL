@@ -33,9 +33,13 @@ class RewardHead(nn.Module):
             nn.Linear(hidden_dim, 1),
         )
 
+    def forward_logits(self, embeddings: torch.Tensor) -> torch.Tensor:
+        # embeddings shape: (Batch, EmbedDim); logits shape: (Batch, 1)
+        return self.net(embeddings)
+
     def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
-        # embeddings shape: (Batch, EmbedDim); output shape: (Batch, 1)
-        return torch.sigmoid(self.net(embeddings))
+        # embeddings shape: (Batch, EmbedDim); rewards shape: (Batch, 1)
+        return torch.sigmoid(self.forward_logits(embeddings))
 
 
 def find_vision_module(root: nn.Module) -> nn.Module:
