@@ -270,7 +270,7 @@ def check_vlm_diagnostics(percentages: List[float], shuffled_indices: List[int],
         else:
             consecutive_identical = 1
 
-def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, processor: Any, task_name: str, task_description: str, device: torch.device, context_len: int = 20, base_episode_idx: int = 0, use_difference_rewards: bool = False, vlm_reward_scale: float = 1.0, global_step: int = 0, phase1_steps: int = 20000, phase1_cap: float = 0.6, warmup_frames: int = 5, warmup_cap: float = 0.5, tv_threshold: float = 1.5) -> List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]:
+def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, processor: Any, task_name: str, task_description: str, device: torch.device, context_len: int = 20, base_episode_idx: int = 0, use_difference_rewards: bool = False, vlm_reward_scale: float = 1.0, global_step: int = 0, enable_filters: bool = False, phase1_steps: int = 20000, phase1_cap: float = 0.6, warmup_frames: int = 5, warmup_cap: float = 0.5, tv_threshold: float = 1.5) -> List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]:
     """
     Synchronously annotates a batch of episodes using the VLM, computes PBRS rewards, 
     and returns a flattened list of (state, action, reward, next_state, done) transitions.
@@ -294,8 +294,11 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
             else:
                 remaining_images.append(episode_data[-1]["image"])
 
-        shuffled_indices = remaining_indices
-        shuffled_images = remaining_images
+        import random
+        combined = list(zip(remaining_indices, remaining_images))
+        random.shuffle(combined)
+        shuffled_indices = [x[0] for x in combined]
+        shuffled_images = [x[1] for x in combined]
 
         pil_query_images = [Image.fromarray(img) for img in shuffled_images]
     
@@ -348,6 +351,11 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
                 percentages.append(0.0)
             percentages = percentages[:len(shuffled_indices)]
 
+        # Restore chronological order before filtering and diagnostics
+        chrono_pairs = sorted(zip(shuffled_indices, percentages), key=lambda x: x[0])
+        shuffled_indices = [x[0] for x in chrono_pairs]
+        percentages = [x[1] for x in chrono_pairs]
+
         current_ep_idx = base_episode_idx + batch_idx
         check_vlm_diagnostics(
             percentages, 
@@ -356,12 +364,13 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
         )
 
         # 1. Median Filter (Window = 3) on the queried predictions
-        smoothed_percentages = list(percentages)
-        for i in range(len(percentages)):
-            start_i = max(0, i - 1)
-            end_i = min(len(percentages), i + 2)
-            smoothed_percentages[i] = float(np.median(percentages[start_i:end_i]))
-        percentages = smoothed_percentages
+        if enable_filters:
+            smoothed_percentages = list(percentages)
+            for i in range(len(percentages)):
+                start_i = max(0, i - 1)
+                end_i = min(len(percentages), i + 2)
+                smoothed_percentages[i] = float(np.median(percentages[start_i:end_i]))
+            percentages = smoothed_percentages
 
         progress = [None] * n_states
         for idx, prog in zip(shuffled_indices, percentages):
@@ -384,31 +393,32 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
                 weight = (j - start_idx) / (end_idx - start_idx)
                 progress[j] = start_val + weight * (end_val - start_val)
 
-        # 2. Volatility Rejection
-        # Calculated BEFORE artificial caps flatten the signal, so we catch true VLM instability
-        tv = sum(abs(progress[i] - progress[i-1]) for i in range(1, len(progress)))
-        if tv > tv_threshold:
-            print(f"[VLM Filter] Rejecting episode {current_ep_idx} due to high volatility (TV = {tv:.2f} > {tv_threshold})")
-            continue
+        if enable_filters:
+            # 2. Volatility Rejection
+            # Calculated BEFORE artificial caps flatten the signal, so we catch true VLM instability
+            tv = sum(abs(progress[i] - progress[i-1]) for i in range(1, len(progress)))
+            if tv > tv_threshold:
+                print(f"[VLM Filter] Rejecting episode {current_ep_idx} due to high volatility (TV = {tv:.2f} > {tv_threshold})")
+                continue
 
-        # 3. Phase 1 Strict Cap
-        phase1_triggered = False
-        if global_step < phase1_steps:
-            for i in range(len(progress)):
-                if progress[i] > phase1_cap:
-                    progress[i] = phase1_cap
-                    phase1_triggered = True
-            if phase1_triggered:
-                print(f"[VLM Filter] Phase 1 cap ({phase1_cap}) triggered for episode {current_ep_idx}")
-        else:
-            # 4. Physical Warmup Constraint (Applies only when Phase 1 is inactive)
-            warmup_triggered = False
-            for i in range(min(warmup_frames, len(progress))):
-                if progress[i] > warmup_cap:
-                    progress[i] = warmup_cap
-                    warmup_triggered = True
-            if warmup_triggered:
-                print(f"[VLM Filter] Physical Warmup cap ({warmup_cap}) triggered for early frames in episode {current_ep_idx}")
+            # 3. Phase 1 Strict Cap
+            phase1_triggered = False
+            if global_step < phase1_steps:
+                for i in range(len(progress)):
+                    if progress[i] > phase1_cap:
+                        progress[i] = phase1_cap
+                        phase1_triggered = True
+                if phase1_triggered:
+                    print(f"[VLM Filter] Phase 1 cap ({phase1_cap}) triggered for episode {current_ep_idx}")
+            else:
+                # 4. Physical Warmup Constraint (Applies only when Phase 1 is inactive)
+                warmup_triggered = False
+                for i in range(min(warmup_frames, len(progress))):
+                    if progress[i] > warmup_cap:
+                        progress[i] = warmup_cap
+                        warmup_triggered = True
+                if warmup_triggered:
+                    print(f"[VLM Filter] Physical Warmup cap ({warmup_cap}) triggered for early frames in episode {current_ep_idx}")
 
         for t_idx in range(len(episode_data)):
             item = episode_data[t_idx]
@@ -531,6 +541,7 @@ def main():
     parser.add_argument("--bf16", action="store_true", help="Use bfloat16 precision instead of float16")
 
     # VLM Filters
+    parser.add_argument("--vlm-enable-filters", action="store_true", help="Enable VLM filtering (median filter, volatility rejection, Phase 1 caps)")
     parser.add_argument("--vlm-phase1-steps", type=int, default=20000, help="Number of steps for Phase 1 strict capping")
     parser.add_argument("--vlm-phase1-cap", type=float, default=0.6, help="Strict cap value for Phase 1")
     parser.add_argument("--vlm-warmup-frames", type=int, default=5, help="Number of initial frames to apply physical warmup cap")
@@ -778,6 +789,7 @@ def main():
                         use_difference_rewards=args.difference_rewards,
                         vlm_reward_scale=args.vlm_reward_scale,
                         global_step=global_step,
+                        enable_filters=args.vlm_enable_filters,
                         phase1_steps=args.vlm_phase1_steps,
                         phase1_cap=args.vlm_phase1_cap,
                         warmup_frames=args.vlm_warmup_frames,
