@@ -43,10 +43,10 @@ The target is ManiSkill's instantaneous shaped control reward, normalized to the
 The frames may be presented in arbitrary order. Judge each frame independently rather than assuming that later-listed frames have higher rewards.
 
 For each frame, format your response exactly as follows:
-<score>XX.XX%</score>
+Frame X:
+Normalized Dense Reward: <score>XX.XX%</score>
 
-Frames:
-
+Please provide your predictions for the following frames:
 {frames_list}
 """
 
