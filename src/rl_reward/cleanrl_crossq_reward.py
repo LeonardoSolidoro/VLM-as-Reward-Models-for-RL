@@ -117,7 +117,7 @@ def annotate_reward_episodes(
         inputs = {key: value.to(device) for key, value in inputs.items()}
 
         with torch.inference_mode():
-            generated_ids = model.generate(**inputs, max_new_tokens=512, do_sample=False)
+            generated_ids = model.generate(**inputs, max_new_tokens=192, do_sample=False)
 
         prompt_len = inputs["input_ids"].shape[1]
         generated_texts = processor.batch_decode(generated_ids[:, prompt_len:], skip_special_tokens=True)
