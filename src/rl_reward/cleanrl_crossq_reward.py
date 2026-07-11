@@ -4,6 +4,7 @@ import os
 import random
 import re
 import sys
+import time
 from typing import Any, Dict, List, Tuple
 
 import gymnasium as gym
@@ -31,6 +32,7 @@ from src.rl.cleanrl_crossq import (
     get_state_dict,
     set_seed,
 )
+from src.rl_reward.qwen_reward_head import QwenRewardHeadPredictor
 
 class StreamToLogger:
     def __init__(self, logger: logging.Logger, level: int = logging.INFO):
@@ -156,6 +158,48 @@ def annotate_reward_episodes(
     return annotated_transitions
 
 
+def annotate_reward_head_episodes(
+    episodes_data: List[List[Dict[str, Any]]],
+    predictor: QwenRewardHeadPredictor,
+    batch_size: int,
+    reward_scale: float,
+) -> List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]:
+    images = [item["next_image"] for episode in episodes_data for item in episode]
+    inference_start = time.perf_counter()
+    predicted_rewards = predictor.predict(images, batch_size=batch_size)
+    inference_seconds = time.perf_counter() - inference_start
+    images_per_second = len(images) / inference_seconds
+    print(
+        f"[Reward Head] Predicted {len(images)} frames in {inference_seconds:.2f}s "
+        f"({images_per_second:.1f} frames/s)"
+    )
+    expected_predictions = sum(len(episode) for episode in episodes_data)
+    if len(predicted_rewards) != expected_predictions:
+        raise ValueError(
+            f"Expected {expected_predictions} head predictions, got {len(predicted_rewards)}"
+        )
+
+    annotated_transitions = []
+    absolute_errors = []
+    prediction_idx = 0
+    for episode in episodes_data:
+        for item in episode:
+            predicted_reward = clip_reward(
+                float(predicted_rewards[prediction_idx]),
+                episode_idx=-1,
+                transition_idx=prediction_idx,
+            ) * reward_scale
+            annotated_transitions.append(
+                (item["state"], item["action"], predicted_reward, item["next_state"], item["done"])
+            )
+            absolute_errors.append(abs(predicted_reward - item["task_reward"]))
+            prediction_idx += 1
+
+    if absolute_errors:
+        print(f"[Reward Head] Batch env-reward MAE diagnostic: {np.mean(absolute_errors):.4f}")
+    return annotated_transitions
+
+
 def load_vlm(args: argparse.Namespace):
     processor = AutoProcessor.from_pretrained(args.model_id)
     processor.tokenizer.padding_side = "left"
@@ -208,6 +252,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--vlm-reward-scale", type=float, default=1.0)
     parser.add_argument("--4bit-quant", dest="quant_4bit", action="store_true")
     parser.add_argument("--bf16", action="store_true")
+    parser.add_argument(
+        "--reward-head-checkpoint",
+        type=str,
+        default=None,
+        help="Use the direct visual reward head instead of autoregressive VLM generation",
+    )
+    parser.add_argument("--reward-head-batch-size", type=int, default=128)
 
     parser.add_argument("--actor-hidden-dim", type=int, default=256)
     parser.add_argument("--critic-hidden-dim", type=int, default=256)
@@ -224,6 +275,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.use_env_rewards and args.reward_head_checkpoint is not None:
+        raise ValueError("--use-env-rewards and --reward-head-checkpoint are mutually exclusive")
+    if args.reward_head_batch_size <= 0:
+        raise ValueError(f"--reward-head-batch-size must be positive, got {args.reward_head_batch_size}")
     args.save_dir = os.path.join(args.save_dir, args.task)
     os.makedirs(args.save_dir, exist_ok=True)
 
@@ -261,13 +316,32 @@ def main() -> None:
     action_dim = env.action_space.shape[-1]
     max_action = float(env.action_space.high.flatten()[0])
 
-    if need_images:
+    if need_images and args.reward_head_checkpoint is not None:
+        reward_head_dtype = (
+            torch.float32 if device.type == "cpu" else torch.bfloat16 if args.bf16 else torch.float16
+        )
+        reward_head_predictor = QwenRewardHeadPredictor(
+            checkpoint_path=args.reward_head_checkpoint,
+            device=device,
+            dtype=reward_head_dtype,
+        )
+        if reward_head_predictor.task != args.task:
+            raise ValueError(
+                f"Reward head was trained for {reward_head_predictor.task}, but RL task is {args.task}"
+            )
+        model = None
+        processor = None
+        task_description = ""
+        print(f"Using direct visual reward head: {args.reward_head_checkpoint}")
+    elif need_images:
+        reward_head_predictor = None
         model, processor = load_vlm(args)
         config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../configs/configs.yaml"))
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
         task_description = config["tasks"][args.task]["description"]
     else:
+        reward_head_predictor = None
         model = None
         processor = None
         task_description = ""
@@ -378,6 +452,14 @@ def main() -> None:
                             annotated_transitions.append(
                                 (item["state"], item["action"], item["task_reward"] * args.vlm_reward_scale, item["next_state"], item["done"])
                             )
+                elif reward_head_predictor is not None:
+                    print(f"Annotating {len(unannotated_episodes)} episode(s) with reward head at step {global_step}...")
+                    annotated_transitions = annotate_reward_head_episodes(
+                        episodes_data=unannotated_episodes,
+                        predictor=reward_head_predictor,
+                        batch_size=args.reward_head_batch_size,
+                        reward_scale=args.vlm_reward_scale,
+                    )
                 else:
                     print(f"Annotating {len(unannotated_episodes)} episode(s) at step {global_step}...")
                     annotated_transitions = annotate_reward_episodes(
