@@ -70,6 +70,14 @@ def state_to_numpy(state: Any) -> np.ndarray:
     return np.array(state).flatten()
 
 
+def success_to_bool(success: Any) -> bool:
+    if isinstance(success, torch.Tensor):
+        return bool(success.detach().any().item())
+    if isinstance(success, np.ndarray):
+        return bool(np.any(success))
+    return bool(success)
+
+
 def get_step_state_dict(env: gym.Env, obs: Any, task: str, moving_camera: bool, need_image: bool) -> Dict[str, Any]:
     if need_image:
         return get_state_dict(env, obs, task, moving_camera)
@@ -163,6 +171,7 @@ def annotate_reward_head_episodes(
     predictor: QwenRewardHeadPredictor,
     batch_size: int,
     reward_scale: float,
+    env_success_override: bool,
 ) -> List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]:
     images = [item["next_image"] for episode in episodes_data for item in episode]
     inference_start = time.perf_counter()
@@ -182,13 +191,18 @@ def annotate_reward_head_episodes(
     annotated_transitions = []
     absolute_errors = []
     prediction_idx = 0
+    success_override_count = 0
     for episode in episodes_data:
         for item in episode:
-            predicted_reward = clip_reward(
-                float(predicted_rewards[prediction_idx]),
-                episode_idx=-1,
-                transition_idx=prediction_idx,
-            ) * reward_scale
+            if env_success_override and item["success"]:
+                predicted_reward = 1.0
+                success_override_count += 1
+            else:
+                predicted_reward = clip_reward(
+                    float(predicted_rewards[prediction_idx]),
+                    episode_idx=-1,
+                    transition_idx=prediction_idx,
+                ) * reward_scale
             annotated_transitions.append(
                 (item["state"], item["action"], predicted_reward, item["next_state"], item["done"])
             )
@@ -197,6 +211,8 @@ def annotate_reward_head_episodes(
 
     if absolute_errors:
         print(f"[Reward Head] Batch env-reward MAE diagnostic: {np.mean(absolute_errors):.4f}")
+    if env_success_override:
+        print(f"[Reward Head] Applied {success_override_count} environment-success override(s)")
     return annotated_transitions
 
 
@@ -259,6 +275,11 @@ def parse_args() -> argparse.Namespace:
         help="Use the direct visual reward head instead of autoregressive VLM generation",
     )
     parser.add_argument("--reward-head-batch-size", type=int, default=128)
+    parser.add_argument(
+        "--env-success-override",
+        action="store_true",
+        help="Set reward-head rewards to exactly 1.0 when info['success'] is true",
+    )
 
     parser.add_argument("--actor-hidden-dim", type=int, default=256)
     parser.add_argument("--critic-hidden-dim", type=int, default=256)
@@ -277,6 +298,8 @@ def main() -> None:
     args = parse_args()
     if args.use_env_rewards and args.reward_head_checkpoint is not None:
         raise ValueError("--use-env-rewards and --reward-head-checkpoint are mutually exclusive")
+    if args.env_success_override and args.reward_head_checkpoint is None:
+        raise ValueError("--env-success-override requires --reward-head-checkpoint")
     if args.reward_head_batch_size <= 0:
         raise ValueError(f"--reward-head-batch-size must be positive, got {args.reward_head_batch_size}")
     args.save_dir = os.path.join(args.save_dir, args.task)
@@ -410,12 +433,13 @@ def main() -> None:
                 action, _ = actor.sample(flat_state_ts)
             action = action.cpu().numpy().flatten()
 
-        next_obs, env_reward, terminated, truncated, _ = env.step(action)
+        next_obs, env_reward, terminated, truncated, info = env.step(action)
         if hasattr(env_reward, "cpu"):
             env_reward = env_reward.cpu().item()
         terminated_bool = bool(terminated.cpu().item()) if hasattr(terminated, "cpu") else bool(terminated)
         truncated_bool = bool(truncated.cpu().item()) if hasattr(truncated, "cpu") else bool(truncated)
         done = terminated_bool or truncated_bool
+        success = success_to_bool(info["success"]) if args.env_success_override else False
 
         next_state_dict = get_step_state_dict(env, next_obs, args.task, args.moving_mounted_camera, need_images)
         episode_data.append(
@@ -427,6 +451,7 @@ def main() -> None:
                 "next_image": next_state_dict["image"],
                 "done": terminated_bool,
                 "task_reward": float(env_reward),
+                "success": success,
             }
         )
 
@@ -459,6 +484,7 @@ def main() -> None:
                         predictor=reward_head_predictor,
                         batch_size=args.reward_head_batch_size,
                         reward_scale=args.vlm_reward_scale,
+                        env_success_override=args.env_success_override,
                     )
                 else:
                     print(f"Annotating {len(unannotated_episodes)} episode(s) at step {global_step}...")
