@@ -297,9 +297,7 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
         shuffled_indices = remaining_indices
         shuffled_images = remaining_images
 
-        pil_s0 = Image.fromarray(s0_image)
         pil_query_images = [Image.fromarray(img) for img in shuffled_images]
-        all_pil_images = [pil_s0] + pil_query_images
     
         frames_list = build_frames_list(len(pil_query_images))
         user_prompt = REWARD_PROMPT_TEMPLATE.format(
@@ -308,7 +306,7 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
             reward_guidance=TASK_REWARD_GUIDANCE[task_name],
             frames_list=frames_list
         )
-        content = build_user_content(user_prompt, all_pil_images)
+        content = build_user_content(user_prompt, pil_query_images)
         messages = [{"role": "user", "content": content}]
         batch_messages.append(messages)
         batch_metadata.append({
