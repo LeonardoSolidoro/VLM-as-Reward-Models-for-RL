@@ -187,14 +187,20 @@ def load_or_extract_cache(
     return cache
 
 
-def calculate_balanced_sample_weights(rewards: torch.Tensor) -> torch.Tensor:
+def calculate_balanced_sample_weights(rewards: torch.Tensor, exponent: float) -> torch.Tensor:
+    if exponent < 0.0 or exponent > 1.0:
+        raise ValueError(f"Balance exponent must be in [0, 1], got {exponent}")
     boundaries = torch.tensor(REWARD_BIN_BOUNDARIES, dtype=rewards.dtype)
     bin_indices = torch.bucketize(rewards, boundaries, right=True)
     counts = torch.bincount(bin_indices, minlength=len(REWARD_BIN_BOUNDARIES) + 1).float()
     if torch.any(counts == 0):
         raise ValueError(f"At least one reward bin is empty: {counts.tolist()}")
-    bin_weights = 1.0 / counts
+    bin_weights = counts.pow(-exponent)
     return bin_weights[bin_indices]
+
+
+def selection_score(metrics: Dict[str, float], macro_weight: float) -> float:
+    return metrics["mae"] + macro_weight * metrics["macro_bin_mae"]
 
 
 def evaluate_head(
@@ -262,6 +268,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
+    parser.add_argument("--balance-exponents", type=float, nargs="+", default=[0.4, 0.5, 0.6])
+    parser.add_argument("--macro-selection-weight", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--deterministic", action="store_true")
     parser.add_argument("--use-both-views", action=argparse.BooleanOptionalAction, default=True)
@@ -278,6 +286,15 @@ def main() -> None:
         raise ValueError("Batch sizes must be positive")
     if args.epochs <= 0:
         raise ValueError(f"--epochs must be positive, got {args.epochs}")
+    if args.macro_selection_weight < 0.0:
+        raise ValueError(
+            f"--macro-selection-weight must be non-negative, got {args.macro_selection_weight}"
+        )
+    if len(set(args.balance_exponents)) != len(args.balance_exponents):
+        raise ValueError(f"Duplicate balance exponents are not allowed: {args.balance_exponents}")
+    for exponent in args.balance_exponents:
+        if exponent < 0.0 or exponent > 1.0:
+            raise ValueError(f"Balance exponent must be in [0, 1], got {exponent}")
     set_seed(args.seed, args.deterministic)
     device = torch.device(args.device)
     dtype = torch.float32 if device.type == "cpu" else torch.bfloat16 if args.bf16 else torch.float16
@@ -343,119 +360,178 @@ def main() -> None:
     train_embeddings = caches["train"]["embeddings"]
     train_rewards = caches["train"]["rewards"]
     input_dim = int(train_embeddings.shape[1])
-    head = RewardHead(input_dim=input_dim, hidden_dim=args.hidden_dim, dropout=args.dropout).to(device)
-    optimizer = torch.optim.AdamW(
-        head.parameters(),
-        lr=args.learning_rate,
-        weight_decay=args.weight_decay,
-    )
     train_dataset_cached = TensorDataset(train_embeddings, train_rewards)
-    generator = torch.Generator().manual_seed(args.seed)
-    sample_weights = calculate_balanced_sample_weights(train_rewards)
-    sampler = WeightedRandomSampler(
-        weights=sample_weights,
-        num_samples=len(train_dataset_cached),
-        replacement=True,
-        generator=generator,
-    )
-    train_loader = DataLoader(
-        train_dataset_cached,
-        batch_size=args.head_batch_size,
-        sampler=sampler,
-    )
+    sweep_results: List[Dict[str, Any]] = []
+    global_best_score = float("inf")
+    global_best_checkpoint: Dict[str, Any] = {}
+    stable_checkpoint_path = output_dir / "best_partial_balanced_reward_head.pth"
 
-    best_val_macro_mae = float("inf")
-    best_checkpoint_path = output_dir / "best_balanced_reward_head.pth"
-    final_checkpoint_path = output_dir / "final_balanced_reward_head.pth"
+    for exponent in args.balance_exponents:
+        run_seed = args.seed
+        set_seed(run_seed, args.deterministic)
+        exponent_tag = str(exponent).replace(".", "p")
+        print(f"\nStarting balance exponent {exponent:.3f} with seed {run_seed}")
 
-    for epoch in range(1, args.epochs + 1):
-        head.train()
-        epoch_loss = 0.0
-        example_count = 0
-        for embeddings, rewards in train_loader:
-            embeddings = embeddings.to(device)
-            rewards = rewards.to(device)
-            predictions = head(embeddings).squeeze(1)
-            loss = torch.mean((predictions - rewards) ** 2)
-
-            optimizer.zero_grad(set_to_none=True)
-            loss.backward()
-            optimizer.step()
-
-            epoch_loss += float(loss.item()) * embeddings.shape[0]
-            example_count += embeddings.shape[0]
-
-        average_loss = epoch_loss / example_count
-        train_metrics = evaluate_head(head, caches["train"], device, args.head_batch_size)
-        val_metrics = evaluate_head(head, caches["val"], device, args.head_batch_size)
-        print(
-            f"Epoch {epoch:03d}/{args.epochs} | train_loss={average_loss:.6f} | "
-            f"train_macro_mae={train_metrics['macro_bin_mae']:.6f} | "
-            f"val_mae={val_metrics['mae']:.6f} | "
-            f"val_macro_mae={val_metrics['macro_bin_mae']:.6f} | "
-            f"val_success_mae={val_metrics['mae_0.9-1.0']:.6f}"
+        head = RewardHead(
+            input_dim=input_dim,
+            hidden_dim=args.hidden_dim,
+            dropout=args.dropout,
+        ).to(device)
+        optimizer = torch.optim.AdamW(
+            head.parameters(),
+            lr=args.learning_rate,
+            weight_decay=args.weight_decay,
+        )
+        generator = torch.Generator().manual_seed(run_seed)
+        sample_weights = calculate_balanced_sample_weights(train_rewards, exponent)
+        sampler = WeightedRandomSampler(
+            weights=sample_weights,
+            num_samples=len(train_dataset_cached),
+            replacement=True,
+            generator=generator,
+        )
+        train_loader = DataLoader(
+            train_dataset_cached,
+            batch_size=args.head_batch_size,
+            sampler=sampler,
         )
 
-        if val_metrics["macro_bin_mae"] < best_val_macro_mae:
-            best_val_macro_mae = val_metrics["macro_bin_mae"]
-            checkpoint = {
-                "task": args.task,
-                "model_id": args.model_id,
-                "adapter_dir": os.path.abspath(args.adapter_dir),
-                "input_dim": input_dim,
-                "hidden_dim": args.hidden_dim,
-                "dropout": args.dropout,
-                "head_state_dict": head.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "epoch": epoch,
-                "train_loss": average_loss,
-                "train_metrics": train_metrics,
-                "val_metrics": val_metrics,
-                "selection_metric": "macro_bin_mae",
-                "seed": args.seed,
-            }
-            torch.save(checkpoint, best_checkpoint_path)
+        best_run_score = float("inf")
+        best_run_checkpoint_path = output_dir / f"best_reward_head_exp_{exponent_tag}.pth"
+        final_run_checkpoint_path = output_dir / f"final_reward_head_exp_{exponent_tag}.pth"
 
-    final_train_metrics = evaluate_head(head, caches["train"], device, args.head_batch_size)
-    final_val_metrics = evaluate_head(head, caches["val"], device, args.head_batch_size)
-    final_checkpoint = {
-        "task": args.task,
-        "model_id": args.model_id,
-        "adapter_dir": os.path.abspath(args.adapter_dir),
-        "input_dim": input_dim,
-        "hidden_dim": args.hidden_dim,
-        "dropout": args.dropout,
-        "head_state_dict": head.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict(),
-        "epoch": args.epochs,
-        "train_loss": average_loss,
-        "train_metrics": final_train_metrics,
-        "val_metrics": final_val_metrics,
-        "selection_metric": "final_epoch",
-        "seed": args.seed,
-    }
-    torch.save(final_checkpoint, final_checkpoint_path)
+        for epoch in range(1, args.epochs + 1):
+            head.train()
+            epoch_loss = 0.0
+            example_count = 0
+            for embeddings, rewards in train_loader:
+                embeddings = embeddings.to(device)
+                rewards = rewards.to(device)
+                predictions = head(embeddings).squeeze(1)
+                loss = torch.mean((predictions - rewards) ** 2)
 
-    best_checkpoint = torch.load(best_checkpoint_path, map_location=device, weights_only=False)
-    head.load_state_dict(best_checkpoint["head_state_dict"])
-    val_metrics = evaluate_head(head, caches["val"], device, args.head_batch_size)
-    test_metrics = evaluate_head(head, caches["test"], device, args.head_batch_size)
-    print(f"Best checkpoint: {best_checkpoint_path} (epoch {best_checkpoint['epoch']})")
-    print_metrics("Validation", val_metrics)
-    print_metrics("Test", test_metrics)
-    print(f"Final checkpoint: {final_checkpoint_path}")
+                optimizer.zero_grad(set_to_none=True)
+                loss.backward()
+                optimizer.step()
+
+                epoch_loss += float(loss.item()) * embeddings.shape[0]
+                example_count += embeddings.shape[0]
+
+            average_loss = epoch_loss / example_count
+            train_metrics = evaluate_head(head, caches["train"], device, args.head_batch_size)
+            val_metrics = evaluate_head(head, caches["val"], device, args.head_batch_size)
+            current_score = selection_score(val_metrics, args.macro_selection_weight)
+            print(
+                f"Exponent {exponent:.3f} | Epoch {epoch:03d}/{args.epochs} | "
+                f"train_loss={average_loss:.6f} | "
+                f"train_macro_mae={train_metrics['macro_bin_mae']:.6f} | "
+                f"val_mae={val_metrics['mae']:.6f} | "
+                f"val_macro_mae={val_metrics['macro_bin_mae']:.6f} | "
+                f"val_success_mae={val_metrics['mae_0.9-1.0']:.6f} | "
+                f"selection_score={current_score:.6f}"
+            )
+
+            if current_score < best_run_score:
+                best_run_score = current_score
+                checkpoint = {
+                    "task": args.task,
+                    "model_id": args.model_id,
+                    "adapter_dir": os.path.abspath(args.adapter_dir),
+                    "input_dim": input_dim,
+                    "hidden_dim": args.hidden_dim,
+                    "dropout": args.dropout,
+                    "head_state_dict": head.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "epoch": epoch,
+                    "train_loss": average_loss,
+                    "train_metrics": train_metrics,
+                    "val_metrics": val_metrics,
+                    "selection_metric": "mae_plus_weighted_macro_bin_mae",
+                    "selection_score": current_score,
+                    "macro_selection_weight": args.macro_selection_weight,
+                    "balance_exponent": exponent,
+                    "seed": run_seed,
+                }
+                torch.save(checkpoint, best_run_checkpoint_path)
+
+        final_train_metrics = evaluate_head(head, caches["train"], device, args.head_batch_size)
+        final_val_metrics = evaluate_head(head, caches["val"], device, args.head_batch_size)
+        final_checkpoint = {
+            "task": args.task,
+            "model_id": args.model_id,
+            "adapter_dir": os.path.abspath(args.adapter_dir),
+            "input_dim": input_dim,
+            "hidden_dim": args.hidden_dim,
+            "dropout": args.dropout,
+            "head_state_dict": head.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "epoch": args.epochs,
+            "train_loss": average_loss,
+            "train_metrics": final_train_metrics,
+            "val_metrics": final_val_metrics,
+            "selection_metric": "final_epoch",
+            "selection_score": selection_score(final_val_metrics, args.macro_selection_weight),
+            "macro_selection_weight": args.macro_selection_weight,
+            "balance_exponent": exponent,
+            "seed": run_seed,
+        }
+        torch.save(final_checkpoint, final_run_checkpoint_path)
+
+        best_run_checkpoint = torch.load(
+            best_run_checkpoint_path,
+            map_location="cpu",
+            weights_only=False,
+        )
+        head.load_state_dict(best_run_checkpoint["head_state_dict"])
+        val_metrics = evaluate_head(head, caches["val"], device, args.head_batch_size)
+        test_metrics = evaluate_head(head, caches["test"], device, args.head_batch_size)
+        print(f"Best exponent {exponent:.3f} checkpoint: {best_run_checkpoint_path}")
+        print_metrics("Validation", val_metrics)
+        print_metrics("Test", test_metrics)
+
+        run_result = {
+            "balance_exponent": exponent,
+            "checkpoint": str(best_run_checkpoint_path),
+            "final_checkpoint": str(final_run_checkpoint_path),
+            "best_epoch": best_run_checkpoint["epoch"],
+            "selection_score": best_run_checkpoint["selection_score"],
+            "training": best_run_checkpoint["train_metrics"],
+            "validation": val_metrics,
+            "test": test_metrics,
+        }
+        sweep_results.append(run_result)
+
+        if best_run_checkpoint["selection_score"] < global_best_score:
+            global_best_score = best_run_checkpoint["selection_score"]
+            global_best_checkpoint = best_run_checkpoint
+            global_best_checkpoint["test_metrics"] = test_metrics
+
+    if not global_best_checkpoint:
+        raise RuntimeError("The partial-balancing sweep did not produce a checkpoint")
+    torch.save(global_best_checkpoint, stable_checkpoint_path)
+    best_exponent = global_best_checkpoint["balance_exponent"]
+    print(
+        f"\nBest sweep checkpoint: {stable_checkpoint_path} | "
+        f"exponent={best_exponent:.3f} | score={global_best_score:.6f}"
+    )
+    print_metrics("Best validation", global_best_checkpoint["val_metrics"])
+    print_metrics("Best test", global_best_checkpoint["test_metrics"])
 
     metrics_path = output_dir / "metrics.json"
     with metrics_path.open("w") as handle:
         json.dump(
             {
                 "task": args.task,
-                "checkpoint": str(best_checkpoint_path),
-                "best_epoch": best_checkpoint["epoch"],
-                "selection_metric": best_checkpoint["selection_metric"],
-                "training": best_checkpoint["train_metrics"],
-                "validation": val_metrics,
-                "test": test_metrics,
+                "checkpoint": str(stable_checkpoint_path),
+                "best_epoch": global_best_checkpoint["epoch"],
+                "balance_exponent": best_exponent,
+                "selection_metric": global_best_checkpoint["selection_metric"],
+                "selection_score": global_best_score,
+                "macro_selection_weight": args.macro_selection_weight,
+                "training": global_best_checkpoint["train_metrics"],
+                "validation": global_best_checkpoint["val_metrics"],
+                "test": global_best_checkpoint["test_metrics"],
+                "sweep": sweep_results,
             },
             handle,
             indent=2,
