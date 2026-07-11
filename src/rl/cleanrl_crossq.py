@@ -384,30 +384,31 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
                 weight = (j - start_idx) / (end_idx - start_idx)
                 progress[j] = start_val + weight * (end_val - start_val)
 
-        # 2. Phase 1 Strict Cap
+        # 2. Volatility Rejection
+        # Calculated BEFORE artificial caps flatten the signal, so we catch true VLM instability
+        tv = sum(abs(progress[i] - progress[i-1]) for i in range(1, len(progress)))
+        if tv > tv_threshold:
+            print(f"[VLM Filter] Rejecting episode {current_ep_idx} due to high volatility (TV = {tv:.2f} > {tv_threshold})")
+            continue
+
+        # 3. Phase 1 Strict Cap
         phase1_triggered = False
         if global_step < phase1_steps:
             for i in range(len(progress)):
                 if progress[i] > phase1_cap:
                     progress[i] = phase1_cap
                     phase1_triggered = True
-        if phase1_triggered:
-            print(f"[VLM Filter] Phase 1 cap ({phase1_cap}) triggered for episode {current_ep_idx}")
-
-        # 3. Physical Warmup Constraint
-        warmup_triggered = False
-        for i in range(min(warmup_frames, len(progress))):
-            if progress[i] > warmup_cap:
-                progress[i] = warmup_cap
-                warmup_triggered = True
-        if warmup_triggered:
-            print(f"[VLM Filter] Physical Warmup cap ({warmup_cap}) triggered for early frames in episode {current_ep_idx}")
-
-        # 4. Volatility Rejection
-        tv = sum(abs(progress[i] - progress[i-1]) for i in range(1, len(progress)))
-        if tv > tv_threshold:
-            print(f"[VLM Filter] Rejecting episode {current_ep_idx} due to high volatility (TV = {tv:.2f} > {tv_threshold})")
-            continue
+            if phase1_triggered:
+                print(f"[VLM Filter] Phase 1 cap ({phase1_cap}) triggered for episode {current_ep_idx}")
+        else:
+            # 4. Physical Warmup Constraint (Applies only when Phase 1 is inactive)
+            warmup_triggered = False
+            for i in range(min(warmup_frames, len(progress))):
+                if progress[i] > warmup_cap:
+                    progress[i] = warmup_cap
+                    warmup_triggered = True
+            if warmup_triggered:
+                print(f"[VLM Filter] Physical Warmup cap ({warmup_cap}) triggered for early frames in episode {current_ep_idx}")
 
         for t_idx in range(len(episode_data)):
             item = episode_data[t_idx]
