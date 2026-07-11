@@ -542,10 +542,9 @@ def main():
         "render_mode": "rgb_array",
         "sim_backend": "physx_cpu",
         "render_backend": "sapien_cpu",
-        "reward_mode": "sparse",
+        "reward_mode": "normalized_dense",
     }
     if args.use_env_rewards:
-        env_kwargs["reward_mode"] = "normalized_dense"
         env_kwargs["render_mode"] = None
 
     env = gym.make(args.task, **env_kwargs)
