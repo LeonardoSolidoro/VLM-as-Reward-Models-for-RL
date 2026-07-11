@@ -283,9 +283,9 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
         s0_image = episode_data[0]["image"]
     
         if n_states <= context_len:
-            remaining_indices = list(range(1, n_states))
+            remaining_indices = list(range(0, n_states))
         else:
-            remaining_indices = np.round(np.linspace(1, n_states - 1, context_len - 1)).astype(int).tolist()
+            remaining_indices = np.round(np.linspace(0, n_states - 1, context_len)).astype(int).tolist()
         
         remaining_images = []
         for idx in remaining_indices:
@@ -383,7 +383,7 @@ def annotate_batch(episodes_data: List[List[Dict[str, Any]]], model: nn.Module, 
             if use_difference_rewards:
                 r_t = (progress[t_idx + 1] - progress[t_idx]) * vlm_reward_scale
             else:
-                r_t = progress[t_idx] * vlm_reward_scale
+                r_t = progress[t_idx + 1] * vlm_reward_scale
             
             abs_errors.append(abs(r_t - item["task_reward"]))
             
