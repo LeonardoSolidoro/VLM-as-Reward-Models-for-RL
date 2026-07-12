@@ -2,8 +2,15 @@ import argparse
 import math
 import os
 import sys
+import traceback
 from dataclasses import dataclass
 from typing import Any, Dict
+
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
 import torch
 import torch.nn as nn
@@ -246,6 +253,24 @@ class RewardContrastiveTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 
+def save_emergency_adapter(
+    model: Qwen3VLRewardContrastiveWrapper,
+    processor: Any,
+    output_dir: str,
+    global_step: int,
+) -> None:
+    emergency_dir = os.path.join(output_dir, f"emergency_save_step_{global_step}")
+    os.makedirs(emergency_dir, exist_ok=True)
+    print(f"Attempting emergency adapter save to {emergency_dir}")
+    try:
+        model.save_pretrained(emergency_dir)
+        processor.save_pretrained(emergency_dir)
+        print(f"Emergency adapter saved to {emergency_dir}")
+    except Exception as save_error:
+        print(f"Emergency save failed: {save_error}")
+        traceback.print_exc()
+
+
 def resolve_qlora_arg(args: argparse.Namespace) -> bool:
     if args.qlora is not None:
         return args.qlora
@@ -301,11 +326,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--per-device-train-batch-size", type=int, default=1)
     parser.add_argument("--gradient-accumulation-steps", type=int, default=1)
     parser.add_argument("--max-steps", type=int, default=-1)
-    parser.add_argument("--save-strategy", default="epoch", choices=["no", "epoch", "steps"])
+    parser.add_argument("--save-strategy", default="steps", choices=["no", "epoch", "steps"])
     parser.add_argument("--save-steps", type=int, default=50)
-    parser.add_argument("--eval-strategy", default="epoch", choices=["no", "epoch", "steps"])
+    parser.add_argument("--eval-strategy", default="steps", choices=["no", "epoch", "steps"])
     parser.add_argument("--eval-steps", type=int, default=50)
-    parser.add_argument("--dataloader-num-workers", type=int, default=4)
+    parser.add_argument("--dataloader-num-workers", type=int, default=0)
+    parser.add_argument("--dataloader-persistent-workers", action="store_true")
+    parser.add_argument("--dataloader-pin-memory", action="store_true")
+    parser.add_argument("--resume-from-checkpoint", default=None)
+    parser.add_argument("--deterministic", action="store_true")
+    parser.add_argument("--no-deterministic", action="store_false", dest="deterministic")
     parser.add_argument("--lora-r", type=int, default=16)
     parser.add_argument("--lora-alpha", type=int, default=32)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
@@ -318,7 +348,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    set_all_seeds(args.seed, deterministic=True)
+    set_all_seeds(args.seed, deterministic=args.deterministic)
     use_qlora = resolve_qlora_arg(args)
 
     processor = AutoProcessor.from_pretrained(args.model_id)
@@ -355,8 +385,8 @@ def main() -> None:
         save_steps=args.save_steps if args.save_strategy == "steps" else None,
         save_total_limit=2,
         dataloader_num_workers=args.dataloader_num_workers,
-        dataloader_pin_memory=True,
-        dataloader_persistent_workers=args.dataloader_num_workers > 0,
+        dataloader_pin_memory=args.dataloader_pin_memory,
+        dataloader_persistent_workers=args.dataloader_persistent_workers and args.dataloader_num_workers > 0,
         bf16=args.bf16,
         fp16=torch.cuda.is_available() and not args.bf16,
         gradient_checkpointing=True,
@@ -373,7 +403,19 @@ def main() -> None:
         processing_class=processor,
     )
 
-    trainer.train()
+    try:
+        trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
+    except KeyboardInterrupt as error:
+        print(f"Training interrupted by user: {error}")
+        traceback.print_exc()
+        save_emergency_adapter(model, processor, args.output_dir, trainer.state.global_step)
+        raise
+    except Exception as error:
+        print(f"Training crashed: {error}")
+        traceback.print_exc()
+        save_emergency_adapter(model, processor, args.output_dir, trainer.state.global_step)
+        raise
+
     model.save_pretrained(args.output_dir)
     processor.save_pretrained(args.output_dir)
     print(f"Saved reward contrastive LoRA adapter to {args.output_dir}")

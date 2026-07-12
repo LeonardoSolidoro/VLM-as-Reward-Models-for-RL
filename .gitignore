@@ -28,3 +28,5 @@ VLM_RM/
 __pycache__/
 .vscode/
 wandb/reward_contrastive.tar.gz
+*.pth
+finetuning_output/Qwen3-vl-8B-Reward-Contrastive
