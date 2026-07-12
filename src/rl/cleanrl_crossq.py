@@ -36,19 +36,29 @@ def set_seed(seed: int, deterministic: bool = False):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-def evaluate_policy(actor: nn.Module, task: str, device: torch.device, num_episodes: int = 10) -> Tuple[float, float]:
+def evaluate_policy(
+    actor: nn.Module,
+    task: str,
+    device: torch.device,
+    num_episodes: int = 10,
+    base_seed: Optional[int] = None,
+) -> Tuple[float, float]:
+    was_training = actor.training
+    actor.eval()
     eval_env = gym.make(
         task,
-        obs_mode="state", 
+        obs_mode="state",
         control_mode="pd_ee_delta_pos",
-        render_mode=None, 
+        render_mode=None,
+        reward_mode="normalized_dense",
         sim_backend="physx_cpu",
-        render_backend="sapien_cpu", 
+        render_backend="sapien_cpu",
     )
     successes = 0
     total_rewards = 0.0
-    for _ in range(num_episodes):
-        obs, _ = eval_env.reset()
+    for episode_index in range(num_episodes):
+        episode_seed = None if base_seed is None else base_seed + episode_index
+        obs, _ = eval_env.reset(seed=episode_seed)
         done = False
         step_count = 0
         episode_reward = 0.0
@@ -83,6 +93,7 @@ def evaluate_policy(actor: nn.Module, task: str, device: torch.device, num_episo
             
         total_rewards += episode_reward
     eval_env.close()
+    actor.train(was_training)
     return successes / num_episodes, total_rewards / num_episodes
 
 # ==============================================================================
