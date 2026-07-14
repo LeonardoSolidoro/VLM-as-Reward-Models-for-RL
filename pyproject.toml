@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vlm-reward-maniskill"
+version = "0.1.0"
+description = "Camera-robust VLM task-progress estimation and online RL for ManiSkill"
+requires-python = ">=3.11"
+
+[project.scripts]
+vlm-baseline-run = "vlm_reward.baselines.runner:main"
+vlm-baseline-metrics = "vlm_reward.baselines.metrics:main"
+vlm-generate-progress-data = "vlm_reward.data.generate_progress_data:main"
+vlm-build-progress-data = "vlm_reward.data.build_progress_dataset:main"
+vlm-build-contrastive-data = "vlm_reward.data.build_contrastive_dataset:main"
+vlm-generate-reward-data = "vlm_reward.data.generate_reward_data:main"
+vlm-build-reward-data = "vlm_reward.data.build_reward_dataset:main"
+vlm-train-progress = "vlm_reward.training.train_progress:main"
+vlm-train-contrastive = "vlm_reward.training.train_contrastive:main"
+vlm-train-reward-contrastive = "vlm_reward.training.train_reward_contrastive:main"
+vlm-train-reward-head = "vlm_reward.training.train_reward_head:main"
+vlm-train-reward-head-joint = "vlm_reward.training.train_reward_head_joint:main"
+vlm-infer-progress = "vlm_reward.evaluation.infer_progress:main"
+vlm-score-progress = "vlm_reward.evaluation.progress_metrics:main"
+vlm-infer-reward = "vlm_reward.evaluation.infer_reward:main"
+vlm-score-reward = "vlm_reward.evaluation.reward_metrics:main"
+vlm-train-rl = "vlm_reward.rl.train:main"
+vlm-evaluate-actors = "vlm_reward.rl.evaluate_checkpoints:main"
+vlm-collect-hard-negatives = "vlm_reward.rl.collect_hard_negatives:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["vlm_reward*"]
+

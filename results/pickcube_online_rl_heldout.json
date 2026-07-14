@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "task": "PickCube-v1",
+  "episodes_per_checkpoint": 200,
+  "base_seed": 300000,
+  "checkpoints": [
+    {
+      "checkpoint_role": "initial_actor",
+      "global_step": 0,
+      "success_rate": 0.605,
+      "average_normalized_dense_return": 14.3702467924729
+    },
+    {
+      "checkpoint_role": "best_actor",
+      "global_step": 116524,
+      "success_rate": 0.77,
+      "average_normalized_dense_return": 11.207404470741748
+    }
+  ],
+  "absolute_success_rate_gain": 0.165
+}

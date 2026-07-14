@@ -1,32 +1,41 @@
-data/
-Documents/
-finetune_data/
-finetune_data_contrastive/
-finetuning_output/Qwen3-VL-8B-4bit-Overfitting-30-Epochs-static/lora_weights/
-finetuning_output/Qwen3-VL-8B-4bit-Real-3-Epochs-static/lora_weights/
-finetuning_output/Qwen3-VL-8B-4bit-Real-3-Epochs-static/lora_weights_merged/
-finetuning_output/Qwen3-VL-8B-4bit-Real-3-Epochs-moving-continued/lora_weights/
-finetuning_output/Qwen3-VL-8B-4bit-Contrastive-Overfitting/lora_weights/
-finetuning_output/Qwen3-VL-8B-4bit-Contrastive-Overfitting-fromScratch/lora_weights/
-finetuning_output/Qwen3-VL-8B-4bit-Contrastive/lora_weights/
-finetuning_output/Qwen3-VL-8B-4bit-Only-Contrastive-Overfitting/lora_weights/
-finetuning_output/Qwen3-VL-8B-4bit-Only-Contrastive/lora_weights/
-finetuning_output/Qwen3-VL-8B-4bit-Real-3Epochs-Moving-From-Scratch/lora_weights
-finetuning_output/Qwen3-VL-2B-4bit-MovingMounted/lora_weights/
-finetuning_output/Qwen3-VL-2B-4bit-MovingMounted-Overfitting/lora_weights/
-finetuning_output/Qwen3-VL-8B-4bit-RL-Contrastive/lora_weights/
-finetuning_output/Qwen3-VL-8B-4bit-RL-Contrastive-Overfitting/lora_weights/
-finetuning_output/Qwen3-VL-8B-4bit-RL-Progress/lora_weights/
-finetuning_output/Qwen3-VL-8B-4bit-RL-Progress-Overfitting/lora_weights/
-finetuning_output/Policy-VLM-Progress/
-finetuning_output/Policy-VLM-Contrastive/
-h5/
-finetuning_output/cleanrl_crossq/weights/
-Qwen3-VL-example/
-VLM_RM/
-.env
-__pycache__/
+# Local operating-system and editor state
+.DS_Store
 .vscode/
-wandb/reward_contrastive.tar.gz
+.idea/
+
+# Python caches and environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+/VLM_RM/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Generated datasets and simulator exports
+/data/
+/finetune_data/
+/finetune_data_contrastive/
+/h5/
+
+# Experiment artifacts (curated summaries belong in results/)
+/output/
+/finetuning_output/
+/wandb/
+*.log
+*.console.log
 *.pth
-finetuning_output/Qwen3-vl-8B-Reward-Contrastive
+*.pt
+*.ckpt
+*.safetensors
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

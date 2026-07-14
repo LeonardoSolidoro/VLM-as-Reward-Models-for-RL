@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "metric": "value_order_correlation",
+  "experiments": [
+    {
+      "model": "Gemini-3.1-Flash-Lite-Base-Static",
+      "in_context_examples": 0,
+      "mean_voc": 0.8019580697159013,
+      "median_voc": 0.8646762035527306,
+      "std_voc": 0.20676933716686274,
+      "num_rollouts": 149
+    },
+    {
+      "model": "Gemini-3.1-Flash-Lite-Base-Static",
+      "in_context_examples": 1,
+      "mean_voc": 0.729616944785162,
+      "median_voc": 0.7859649122807018,
+      "std_voc": 0.21959368798579115,
+      "num_rollouts": 147
+    },
+    {
+      "model": "Gemini-3.1-Flash-Lite-Base-Static",
+      "in_context_examples": 2,
+      "mean_voc": 0.6909936790922302,
+      "median_voc": 0.7497252155043852,
+      "std_voc": 0.23119063222424632,
+      "num_rollouts": 144
+    },
+    {
+      "model": "Qwen3-VL-8B-Instruct-Base-Static",
+      "in_context_examples": 0,
+      "mean_voc": 0.24672752847128493,
+      "median_voc": 0.0,
+      "std_voc": 0.3293024504817744,
+      "num_rollouts": 150
+    },
+    {
+      "model": "Qwen3-VL-8B-Instruct-Base-Static",
+      "in_context_examples": 1,
+      "mean_voc": 0.3642265549038207,
+      "median_voc": 0.3872983346207417,
+      "std_voc": 0.3592269903941149,
+      "num_rollouts": 147
+    },
+    {
+      "model": "Qwen3-VL-8B-Instruct-Base-Static",
+      "in_context_examples": 2,
+      "mean_voc": 0.448436865783943,
+      "median_voc": 0.5346841823842661,
+      "std_voc": 0.34577101932027243,
+      "num_rollouts": 144
+    },
+    {
+      "model": "Qwen3-VL-8B-Instruct-Finetuned-Static",
+      "in_context_examples": 0,
+      "mean_voc": 0.9906137758642224,
+      "median_voc": 0.9947368421052631,
+      "std_voc": 0.012038050913345186,
+      "num_rollouts": 150
+    },
+    {
+      "model": "Qwen3-VL-8B-Instruct-Finetuned-Mounted",
+      "in_context_examples": 0,
+      "mean_voc": 0.8200974486730522,
+      "median_voc": 0.8885964912280702,
+      "std_voc": 0.18566281592114808,
+      "num_rollouts": 150
+    },
+    {
+      "model": "Qwen3-VL-32B-Instruct-Base-Static",
+      "in_context_examples": 0,
+      "mean_voc": 0.7001594913701402,
+      "median_voc": 0.7637626158259734,
+      "std_voc": 0.2185494655490824,
+      "num_rollouts": 150
+    },
+    {
+      "model": "Qwen3-VL-32B-Instruct-Base-Static",
+      "in_context_examples": 1,
+      "mean_voc": 0.6840562924667664,
+      "median_voc": 0.7701754385964912,
+      "std_voc": 0.2780519226759117,
+      "num_rollouts": 147
+    },
+    {
+      "model": "Qwen3-VL-32B-Instruct-Base-Static",
+      "in_context_examples": 2,
+      "mean_voc": 0.718441213577416,
+      "median_voc": 0.7833333333333332,
+      "std_voc": 0.214418771024081,
+      "num_rollouts": 144
+    }
+  ]
+}

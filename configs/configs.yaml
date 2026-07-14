@@ -1,50 +1,22 @@
-# Data Path Settings
-data_root: "data/"
-output_root: "output/"
+# Shared defaults for trajectory generation and local Qwen fine-tuning.
 seed: 42
+data_root: data
+views: [topview]
+num_rollouts: 500
+num_frames: 20
+split_percentages: [0.25, 0.25, 0.25, 0.25]
 
-# Collection Settings
-rollouts_per_setting: 10
-camera_names: ["topview", "corner", "corner2"] # Options: 'topview' 'corner', 'corner2', 'corner3', 'behindGripper', 'gripperPOV'
-levels:
-  - "expert"
-  - "partial"
-  - "random"
-  - "regressing"
+# Retained for the collaborator's historical RL-trajectory command. The new
+# generators select camera modes explicitly with --camera-modes.
+enable_wrist_follow_camera: true
 
-# Task Descriptions
 tasks:
   PegInsertionSide-v1:
-    description: "Pick up the peg and insert it into the side hole of the box."
+    description: Pick up the peg and insert it into the side hole of the box.
   PickCube-v1:
-    description: "Grasp the red cube and move it to the green target goal position."
+    description: Grasp the red cube and move it to the green target goal position.
   PushCube-v1:
-    description: "Push the cube to the red-and-white circular goal region."
-
-# Prompt Template
-reward_prompt_template: |
-  You are an expert roboticist tasked to predict task completion
-  percentages for frames of a robot for the task of {task_description}.
-  The task completion percentages are between 0 and 100, where 100
-  corresponds to full task completion. We provide an example of
-  the robot performing a task at various stages and their
-  corresponding task completion percentages. Note that these frames are
-  in random order, so please pay attention to the individual frames
-  when reasoning about task completion percentage.
-
-  {in_context_example}
-
-  Initial robot scene: [IMG]
-  In the initial robot scene, the task completion percentage is 0.
-
-  Now, for the task of {task_description}, output the task completion
-  percentage for the following frames that are presented in random
-  order. For each frame, you must format your response exactly as follows, ending with a score enclosed in xml tags:
-  Frame X:
-  Task Completion Percentage: <score>XX%</score>
-  
-  Please provide your predictions for the following frames:
-  {frames_list}
+    description: Push the cube to the red-and-white circular goal region.
 
 finetuning_prompt_template: |
   You are an expert roboticist tasked to predict task completion
@@ -59,20 +31,6 @@ finetuning_prompt_template: |
   percentage for the following frames. For each frame, you must format your response exactly as follows, ending with a score enclosed in xml tags:
   Frame X:
   Task Completion Percentage: <score>XX%</score>
-  
+
   Please provide your predictions for the following frames:
   {frames_list}
-
-# Experiment settings
-experiment_name: "Gemini-3.1-Flash-Lite-2-Shot-20-Frames"
-views: ["topview"]
-frames_in_context: 20
-experiment_levels: ["expert"]
-experiment_shuffle_frames: true
-experiment_in_context_examples: 2
-
-# Data generation settings
-num_rollouts: 500
-num_frames: 20
-split_percentages: [0.25, 0.25, 0.25, 0.25] # [expert, partial, random, regressing]
-enable_wrist_follow_camera: true

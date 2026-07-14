@@ -1,0 +1,49 @@
+# Zero/few-shot API baseline used to reproduce the paper's progress-prediction setup.
+seed: 42
+data_root: data/static
+output_root: output
+experiment_name: Gemini-3.1-Flash-Lite-2-Shot-20-Frames
+
+view: topview
+query_frames: 20
+in_context_frames: 20
+in_context_examples: 2  # Set to 0, 1, or 2 for the reported ablations.
+shuffle_query_frames: true
+shuffle_in_context_frames: true
+levels: [expert]
+rollouts_per_task: 50
+
+concurrency: 2
+max_retries: 3
+retry_delay_seconds: 60
+max_response_tokens: 2000
+request_timeout_seconds: 600
+
+tasks:
+  PegInsertionSide-v1: Pick up the peg and insert it into the side hole of the box.
+  PickCube-v1: Grasp the red cube and move it to the green target goal position.
+  PushCube-v1: Push the cube to the red-and-white circular goal region.
+
+prompt_template: |
+  You are an expert roboticist tasked to predict task completion
+  percentages for frames of a robot for the task of {task_description}.
+  The task completion percentages are between 0 and 100, where 100
+  corresponds to full task completion. We provide examples of
+  the robot performing a task at various stages and their
+  corresponding task completion percentages. Note that these frames are
+  in random order, so please pay attention to the individual frames
+  when reasoning about task completion percentage.
+
+  {in_context_example}
+
+  Initial robot scene: [IMG]
+  In the initial robot scene, the task completion percentage is 0.
+
+  Now, for the task of {task_description}, output the task completion
+  percentage for the following frames that are presented in random
+  order. For each frame, format the response exactly as follows:
+  Frame X:
+  Task Completion Percentage: <score>XX%</score>
+
+  Please provide predictions for the following frames:
+  {frames_list}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "task": "PickCube-v1",
+  "experiment": "Qwen3-VL-8B-Reward-Head-PickCube",
+  "best_epoch": 1,
+  "selection_score": 0.6885322372312658,
+  "validation": {
+    "mae": 0.035145580768585205,
+    "macro_bin_mae": 0.1362558301538229,
+    "mae_offline": 0.05404309555888176,
+    "mae_online": 0.02526848576962948,
+    "low_reward_false_positive_rate": 0.002509410260245204
+  },
+  "test": {
+    "mae": 0.03094862401485443,
+    "macro_bin_mae": 0.11809106357395649,
+    "mae_offline": 0.048402853310108185,
+    "mae_online": 0.02145352214574814,
+    "low_reward_false_positive_rate": 0.0030459945555776358
+  }
+}

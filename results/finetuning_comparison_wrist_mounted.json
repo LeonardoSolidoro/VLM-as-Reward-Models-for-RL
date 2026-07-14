@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "num_evaluation_frames": 2850,
+  "supervised": {
+    "experiment": "Qwen3-VL-8B-4bit-Supervised-Finetuning-3Epochs",
+    "mae_percentage_points": 5.6603508771929825,
+    "rmse_percentage_points": 11.170167034514183,
+    "accuracy_within_5_percentage_points": 70.17543859649122,
+    "mean_voc": 0.9277756517850105
+  },
+  "contrastive": {
+    "experiment": "Qwen3-VL-8b-4bit-Contrastive-Finetuning-3Epochs",
+    "mae_percentage_points": 3.70140350877193,
+    "rmse_percentage_points": 7.585882548200158,
+    "accuracy_within_5_percentage_points": 78.63157894736842,
+    "mean_voc": 0.9666333485405854
+  },
+  "relative_mae_reduction_percent": 34.6082320852963
+}
