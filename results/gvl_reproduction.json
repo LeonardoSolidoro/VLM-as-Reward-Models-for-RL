@@ -61,11 +61,11 @@
     {
       "model": "Qwen3-VL-8B-Instruct-Finetuned-Mounted",
       "in_context_examples": 0,
-      "mean_voc": 0.8200974486730522,
-      "median_voc": 0.8885964912280702,
-      "std_voc": 0.18566281592114808,
+      "mean_voc": 0.7086732760498262,
+      "median_voc": 0.8721215481191364,
+      "std_voc": 	0.34275235429612877,
       "num_rollouts": 150
-    },
+    },	
     {
       "model": "Qwen3-VL-32B-Instruct-Base-Static",
       "in_context_examples": 0,
